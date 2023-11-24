@@ -1,2 +1,2 @@
 # gpt_miniqueue
-The Python module is designed to queue small API requests to LLM engines
+The gpt_miniqueue Python module is designed to create and manage time-efficient small queues of API requests for LLM analysis.
