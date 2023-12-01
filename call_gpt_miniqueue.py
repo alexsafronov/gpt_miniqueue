@@ -1,6 +1,6 @@
 # PROGRAM: gpt_miniqueue.py
 # DATE CREATED: 2023-11-24
-# PURPOSE: This program is an example of using the module gpt_miniqueue.py (see the module description)
+# PURPOSE: This is an example of using the module gpt_miniqueue.py (see the module description)
 # AUTHOR: Alexander Safronov
 
 import threading, time, sys, keyboard, json, os
