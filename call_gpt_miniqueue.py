@@ -8,15 +8,13 @@ from datetime import datetime
 from gpt_miniqueue import *
 
 # config file must be in the same folder where the main program is called
-config_fn   =  "config_gpt_miniqueue.json"
-config_data = json.load(open(config_fn, encoding="utf-8"))
-print(config_data)
-exit()
+gpt_miniqueue.config("config_gpt_miniqueue.json")
 
-fn = "..\\..\\subselected_fda_labels.json"
-json_list = json.load(open(fn, encoding="utf-8"))
-sleep_seconds = 0.5
-
+context_list = gpt_miniqueue.context_list
+'''
+# print(len(gpt_miniqueue.context_list))
+# a_list = gpt_miniqueue.context_list[0:3]
+# print(f"======================================\nA_LIST = {a_list}")
 
 if len(sys.argv) < 5 :
     print("Not enough arguments to the command line call.")
@@ -26,7 +24,7 @@ l_limit   = int(sys.argv[1])
 u_limit   = int(sys.argv[2])
 prompt_idx =     sys.argv[3]
 rep_idx    = int(sys.argv[4])
-
+'''
 def never(string) :
     return (False)
 def always(string) :
@@ -51,7 +49,16 @@ def trivial_query2(context_idx, rep_idx) :
         Here is the drug label: $ """ + context_list[context_idx] + " $"
     return (text)
 
-# queue_all(l_limit, u_limit, rep_idx, query_fn= .... , response_is_valid_fn_arg = always)
-queue_all(l_limit, u_limit, rep_idx, query_fn=trivial_query2, response_is_valid_fn_arg = always)
+# queue_range_pregenerated(l_limit, u_limit, rep_idx, query_fn= .... , response_is_valid_fn_arg = always)
+# queue_range_pregenerated(l_limit, u_limit, rep_idx, query_fn=trivial_query2, response_is_valid_fn_arg = always)
+queue_range_pregenerated( 0,  5)
+queue_range_pregenerated( 5, 10)
+'''
+queue_range_pregenerated(10, 15)
+queue_range_pregenerated(15, 20)
+queue_range_pregenerated(20, 25)
+queue_range_pregenerated(25, 30)
+queue_range_pregenerated(30, 35)
+'''
 
 
