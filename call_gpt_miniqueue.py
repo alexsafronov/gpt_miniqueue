@@ -7,9 +7,16 @@ import threading, time, sys, keyboard, json, os
 from datetime import datetime
 from gpt_miniqueue import *
 
+# config file must be in the same folder where the main program is called
+config_fn   =  "config_gpt_miniqueue.json"
+config_data = json.load(open(config_fn, encoding="utf-8"))
+print(config_data)
+exit()
+
 fn = "..\\..\\subselected_fda_labels.json"
 json_list = json.load(open(fn, encoding="utf-8"))
 sleep_seconds = 0.5
+
 
 if len(sys.argv) < 5 :
     print("Not enough arguments to the command line call.")
