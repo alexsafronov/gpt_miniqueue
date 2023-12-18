@@ -28,7 +28,7 @@ def config(fn) :
     global context_list
     context_list = get_context_list(source_path_fn())
     global pregenerated_query_list
-    pregenerated_query_list = get_pregenerated_query_list(source_path_fn())
+    pregenerated_query_list = get_pregenerated_query_list(source_pregen_query_path_fn())
 
 def config_data() :
     return ( json.load(open(config_fn, encoding="utf-8")) )
@@ -36,6 +36,10 @@ def config_data() :
 def source_path_fn() :
     config_data = json.load(open(config_fn, encoding="utf-8"))
     return(config_data.get('source_path_fn'))
+
+def source_pregen_query_path_fn() :
+    config_data = json.load(open(config_fn, encoding="utf-8"))
+    return(config_data.get('source_pregen_query_path_fn'))
 
 def get_context_list(json_filename) :
     ret = []
