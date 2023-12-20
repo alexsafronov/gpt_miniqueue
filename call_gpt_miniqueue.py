@@ -8,7 +8,7 @@ from datetime import datetime
 from gpt_miniqueue import *
 
 # config file must be in the same folder where the main program is called
-gpt_miniqueue.config("config_gpt_miniqueue.json")
+# gpt_miniqueue.config("C:/py/gpt_miniqueue/config_gpt_miniqueue.json")
 
 context_list = gpt_miniqueue.context_list
 '''
@@ -51,8 +51,8 @@ def trivial_query2(context_idx, rep_idx) :
 
 # queue_range_pregenerated(l_limit, u_limit, rep_idx, query_fn= .... , response_is_valid_fn_arg = always)
 # queue_range_pregenerated(l_limit, u_limit, rep_idx, query_fn=trivial_query2, response_is_valid_fn_arg = always)
-queue_range_pregenerated( 0,  5)
-queue_range_pregenerated( 5, 10)
+gpt_miniqueue.config("ddconfig.json")
+queue_range_pregenerated( 0,  2)
 '''
 queue_range_pregenerated(10, 15)
 queue_range_pregenerated(15, 20)

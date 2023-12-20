@@ -39,6 +39,7 @@ def source_path_fn() :
 
 def source_pregen_query_path_fn() :
     config_data = json.load(open(config_fn, encoding="utf-8"))
+    # print(config_data, flush=True)
     return(config_data.get('source_pregen_query_path_fn'))
 
 def get_context_list(json_filename) :
@@ -55,9 +56,11 @@ def get_context_list(json_filename) :
 
 def get_pregenerated_query_list(json_filename) :
     ret = []
+    print(f"json_filename = {json_filename}\n", flush=True)
     with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
         for one_json_obj in json.load(json_file) :
             label = one_json_obj
+            print(f"label = {label}", flush=True)
             try:
                 ret.append(label.get('pregenerated_query', [])[0:16000])
             except IndexError:
