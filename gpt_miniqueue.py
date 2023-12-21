@@ -59,8 +59,8 @@ def get_pregenerated_query_list(json_filename) :
     print(f"json_filename = {json_filename}\n", flush=True)
     with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
         for one_json_obj in json.load(json_file) :
-            label = one_json_obj
-            print(f"label = {label}", flush=True)
+            label = one_json_obj # .encode('utf-8')
+            # print(label, flush=True)
             try:
                 ret.append(label.get('pregenerated_query', [])[0:16000])
             except IndexError:
@@ -241,4 +241,4 @@ def restart_outstanding() :
         time.sleep(5)
 
 config("../ddconfig.json")
-queue_range_pregenerated( 0,  2)
+queue_range_pregenerated( 100,  102)
