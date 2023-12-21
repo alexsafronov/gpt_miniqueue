@@ -6,13 +6,13 @@
 # AUDIENCE: This package is designed for data analysis utilizing GPT API on small and medium-sized datasets by researchers
 # as a quick and low cost solution for text analysis.
 
+# The config file and the key must be in the folder above from where the main program is located
+
 import openai
 from openai.error import OpenAIError, RateLimitError
 import threading, time, sys, keyboard, json, os
 import ast
-# import gpt_fda_lbl
 from datetime import datetime
-import gpt_miniqueue
 
 sleep_seconds = 0.5
 queue_timestamp = ""
@@ -78,19 +78,6 @@ global prompt_id
 global rep_id
 global query_fn_static
 
-def trivial_query(context_idx, rep_idx) :
-    text = """
-        Tell me how many words and how many commas are there in the following drug label inside the pair of the dollar sighs ($ ... $),
-        but only return the two numbers separated by a single space, without explaining
-        hat you are doing. For example, if the drug label is $the drug is being used for cough, perspiration, and running nose$,
-        then your response must be '11 2' because there are 11 words in the drug label and 2 commas.
-        Only count words that consist of alphanumeric letters. White space and punctuation are treated as delimiters.
-        A series of consequtive white space and punctuation is always treated one delimiter.
-        Here is the drug label: $
-    """ + context_list[context_idx] + "$"
-    # print(f"from trivial_query =================={context_idx}=================================")
-    return (text)
-
 def TA_query(context_idx, rep_idx) :
     text = """
         Please return a short description of a therapuetic area for which the drug is indicated
@@ -99,19 +86,6 @@ def TA_query(context_idx, rep_idx) :
         Only return the description of a therapuetic area within square brackets, without explaining
         what you are doing. For example, if the drug label is $the drug is being used for cough, perspiration, and running nose$,
         then your response must be "[respiratory diseases]". Here is the drug label: $
-    """ + context_list[context_idx] + "$"
-    # print(f"from trivial_query =================={context_idx}=================================")
-    return (text)
-
-def spare_query(context_idx, rep_idx) :
-    text = """
-        Tell me how many words and how many commas are there in the following drug label inside the pair of the dollar sighs ($ ... $),
-        but only return the two numbers separated by a single space, without explaining
-        hat you are doing. For example, if the drug label is $the drug is being used for cough, perspiration, and running nose$,
-        then your response must be '11 2' because there are 11 words in the drug label and 2 commas.
-        Only count words that consist of alphanumeric letters. White space and punctuation are treated as delimiters.
-        A series of consequtive white space and punctuation is always treated one delimiter.
-        Here is the drug label: $
     """ + context_list[context_idx] + "$"
     # print(f"from trivial_query =================={context_idx}=================================")
     return (text)
@@ -129,7 +103,7 @@ def res_is_valid(response) :
     return (True)
 
 def fetch_raw_API_response_asis(query):
-    openai.api_key = open("openai_key.txt", "r").read().strip('\n')
+    openai.api_key = open("../openai_key.txt", "r").read().strip('\n')
     print(f"\n{query}\n")
     completion = openai.ChatCompletion.create(
         model = "gpt-3.5-turbo",
@@ -178,6 +152,7 @@ def procure_valid_raw_API_response(context_idx, context, queue_timestamp, out_fn
     
     json.dump(to_out, open(os.path.join(".", queue_timestamp, out_fn), "w"))
     return(is_valid)
+
 
 def get_extract(context_idx) :
     start_time[context_idx] = datetime.now()
@@ -255,7 +230,7 @@ def print_and_resend_outstanding() :
     print(flush=True)
 
 def restart_outstanding() :
-    # During the following loop too much RAM is used.
+    # During the following loop too much RAM is used if over 20 queries are queued.
     while not is_all_completed(is_completed):
         elapsed = elapsed_seconds(start_time)
         for idx_key in is_completed.keys() :
@@ -265,3 +240,5 @@ def restart_outstanding() :
                 threading.Thread(target=get_extract, daemon=True, args=(idx_key, )).start()
         time.sleep(5)
 
+config("../ddconfig.json")
+queue_range_pregenerated( 0,  2)
