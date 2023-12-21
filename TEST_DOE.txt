@@ -1,0 +1,53 @@
+
+
+proc factex;
+	factors Temp Moisture HoldPress Thick BoostPress Time Speed Gate;
+	size design = 16;
+	model resolution = 4;
+	examine design aliasing;
+run;
+
+
+data EtcherDesign;
+set EtcherDesign;
+input Rate @@;
+datalines;
+550 669 604 650 633 642 601 635
+1037 749 1052 868 1075 860 1063 729
+;
+
+title 'Nitride Etch Process Experiment';
+proc print;
+run;
+
+**********************************;
+
+
+
+proc factex;
+	factors Power Flow Pressure Gap;
+	output out=EtcherDesign
+	Power nvals=(0.80 1.20)
+	Flow nvals=(4.50 550)
+	Pressure nvals=(125 200)
+	Gap nvals=(275 325);
+run;
+
+data EtcherDesign;
+set EtcherDesign;
+input Rate @@;
+datalines;
+550 669 604 650 633 642 601 635
+1037 749 1052 868 1075 860 1063 729
+;
+title 'Nitride Etch Process Experiment';
+proc print;
+run;
+
+proc glm data=EtcherDesign;
+class Power Flow Pressure Gap;
+model rate=Power|Flow|Pressure|Gap@2 / ss1;
+run;
+
+
+
