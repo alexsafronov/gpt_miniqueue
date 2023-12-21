@@ -1,0 +1,19 @@
+{
+	"base_path" : "C:/Users/as23i485/Documents",
+	
+	"staging_dir" : "misc/testing_lib/staging",
+	
+	"ctinversion_interventions_fn" : "sorted_internames.json",
+	"ctinversion_indications_fn"   : "sorted_indicnames.json",
+	
+	"label_data_path" : "additional_data/openfda_labels/JSON",
+	"label_subselected_path_fn" : "additional_data/emtree_indications/subselected_fda_labels.json",
+	"ct_data_path"              : "CT.gov_ALL_ZIP/AllAPIJSON",
+	"ct_data_path_extracted"    : "CT.gov_py_scripts/JSON/",
+	"fda_master_appl_data_html_source_path"      : "misc/testing_lib/staging/fda_master_appl_data_html_source_path/",
+	"ORIGINAL_fda_raw_master_data_path"      : "FDA.gov_py_scripts/source/",
+	"emtree_indic_data_path_fn" :   "additional_data/emtree_indications/emtree_6.txt",
+	"emtree_inter_data_path_fn" : "additional_data/emtree_interventions/emtree_5.txt",
+	"emtree_nodes_w_unique_terms_indic_path_fn" : "additional_data/emtree_indications/emtree_nodes_w_unique_terms.json",
+	"verbatim_synonyms_matched_labels_fn" : "verbatim_synonyms_matched_labels.json"
+}
