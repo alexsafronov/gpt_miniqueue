@@ -15,7 +15,32 @@ from datetime import datetime
 import gpt_miniqueue
 
 sleep_seconds = 0.5
-queue_timestamp = ""  
+queue_timestamp = ""
+
+config_fn = None
+context_list = None
+pregenerated_query_list = None
+
+def config(fn) :
+    global config_fn
+    config_fn = fn
+    config_data = json.load(open(config_fn, encoding="utf-8"))
+    global context_list
+    context_list = get_context_list(source_path_fn())
+    global pregenerated_query_list
+    pregenerated_query_list = get_pregenerated_query_list(source_pregen_query_path_fn())
+
+def config_data() :
+    return ( json.load(open(config_fn, encoding="utf-8")) )
+
+def source_path_fn() :
+    config_data = json.load(open(config_fn, encoding="utf-8"))
+    return(config_data.get('source_path_fn'))
+
+def source_pregen_query_path_fn() :
+    config_data = json.load(open(config_fn, encoding="utf-8"))
+    # print(config_data, flush=True)
+    return(config_data.get('source_pregen_query_path_fn'))
 
 def get_context_list(json_filename) :
     ret = []
@@ -23,14 +48,30 @@ def get_context_list(json_filename) :
         for one_json_obj in json.load(json_file) :
             label = one_json_obj
             try:
-                ret.append(label.get('indications_and_usage', [])[0][0:16000])
+                ret.append(label.get('indications_and_usage', [])[0:16000])
             except IndexError:
                 ret.append('')
+    l = len(ret)
+    return(ret)
+
+def get_pregenerated_query_list(json_filename) :
+    ret = []
+    print(f"json_filename = {json_filename}\n", flush=True)
+    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
+        for one_json_obj in json.load(json_file) :
+            label = one_json_obj
+            print(f"label = {label}", flush=True)
+            try:
+                ret.append(label.get('pregenerated_query', [])[0:16000])
+            except IndexError:
+                ret.append('')
+    l = len(ret)
     return(ret)
 
 def load_context_data() :
     pass
-context_list = get_context_list("..\\..\\subselected_fda_labels.json")
+
+
 is_completed = {}
 start_time = {}
 global prompt_id
@@ -47,6 +88,32 @@ def trivial_query(context_idx, rep_idx) :
         A series of consequtive white space and punctuation is always treated one delimiter.
         Here is the drug label: $
     """ + context_list[context_idx] + "$"
+    # print(f"from trivial_query =================={context_idx}=================================")
+    return (text)
+
+def TA_query(context_idx, rep_idx) :
+    text = """
+        Please return a short description of a therapuetic area for which the drug is indicated
+        enclosed in square brackets. For example "[cardiovascular]" or "[pulmonary]" or "[oncology]".
+        The drug label you will find below inside the pair of the dollar sighs ($ ... $).
+        Only return the description of a therapuetic area within square brackets, without explaining
+        what you are doing. For example, if the drug label is $the drug is being used for cough, perspiration, and running nose$,
+        then your response must be "[respiratory diseases]". Here is the drug label: $
+    """ + context_list[context_idx] + "$"
+    # print(f"from trivial_query =================={context_idx}=================================")
+    return (text)
+
+def spare_query(context_idx, rep_idx) :
+    text = """
+        Tell me how many words and how many commas are there in the following drug label inside the pair of the dollar sighs ($ ... $),
+        but only return the two numbers separated by a single space, without explaining
+        hat you are doing. For example, if the drug label is $the drug is being used for cough, perspiration, and running nose$,
+        then your response must be '11 2' because there are 11 words in the drug label and 2 commas.
+        Only count words that consist of alphanumeric letters. White space and punctuation are treated as delimiters.
+        A series of consequtive white space and punctuation is always treated one delimiter.
+        Here is the drug label: $
+    """ + context_list[context_idx] + "$"
+    # print(f"from trivial_query =================={context_idx}=================================")
     return (text)
 
 def res_is_valid(response) :
@@ -101,8 +168,8 @@ def procure_valid_raw_API_response(context_idx, context, queue_timestamp, out_fn
     
     if not is_valid :
         out_fn = "INVALID_" + out_fn
-        
-    print("\nRESPONSE\n", raw_response)
+    
+    print(f"\n context_idx = {context_idx}  RESPONSE : {raw_response}\n" )
     try :
         response = json.loads(raw_response)
         to_out = dict_to_save(context_idx, context, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response)
@@ -111,8 +178,6 @@ def procure_valid_raw_API_response(context_idx, context, queue_timestamp, out_fn
     
     json.dump(to_out, open(os.path.join(".", queue_timestamp, out_fn), "w"))
     return(is_valid)
-
-
 
 def get_extract(context_idx) :
     start_time[context_idx] = datetime.now()
@@ -127,7 +192,15 @@ def get_extract(context_idx) :
     request_en_time = datetime.now()
     print(f"en idx: {context_idx}, en time = {request_en_time}, out_fn = {out_fn}", flush=True)
 
-def queue_all(l_lim, u_lim, rep, query_fn=trivial_query, response_is_valid_fn_arg = response_is_valid_always) :
+
+def pregenerated_query(context_idx, rep_idx) :
+    return (pregenerated_query_list[context_idx])
+
+def queue_range_pregenerated(l_lim, u_lim) :
+    queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query)
+
+# def queue_all(l_lim, u_lim, rep, query_fn=trivial_query, response_is_valid_fn_arg = response_is_valid_always) :
+def queue_range(l_lim, u_lim, rep, query_fn=TA_query, response_is_valid_fn_arg = response_is_valid_always) :
     global response_is_valid_fn
     global rep_id
     global queue_timestamp
