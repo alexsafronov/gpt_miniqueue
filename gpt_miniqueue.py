@@ -240,5 +240,5 @@ def restart_outstanding() :
                 threading.Thread(target=get_extract, daemon=True, args=(idx_key, )).start()
         time.sleep(5)
 
-config("../ddconfig.json")
-queue_range_pregenerated( 100,  102)
+config("../gpt_mini_config.json")
+queue_range_pregenerated( 1000,  1004)
