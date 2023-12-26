@@ -18,41 +18,22 @@ sleep_seconds = 0.5
 queue_timestamp = ""
 
 config_fn = None
-context_list = None
 pregenerated_query_list = None
 
 def config(fn) :
     global config_fn
     config_fn = fn
     config_data = json.load(open(config_fn, encoding="utf-8"))
-    global context_list
-    context_list = get_context_list(source_path_fn())
     global pregenerated_query_list
     pregenerated_query_list = get_pregenerated_query_list(source_pregen_query_path_fn())
 
 def config_data() :
     return ( json.load(open(config_fn, encoding="utf-8")) )
 
-def source_path_fn() :
-    config_data = json.load(open(config_fn, encoding="utf-8"))
-    return(config_data.get('source_path_fn'))
-
 def source_pregen_query_path_fn() :
     config_data = json.load(open(config_fn, encoding="utf-8"))
     # print(config_data, flush=True)
     return(config_data.get('source_pregen_query_path_fn'))
-
-def get_context_list(json_filename) :
-    ret = []
-    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
-        for one_json_obj in json.load(json_file) :
-            label = one_json_obj
-            try:
-                ret.append(label.get('indications_and_usage', [])[0:16000])
-            except IndexError:
-                ret.append('')
-    l = len(ret)
-    return(ret)
 
 def get_pregenerated_query_list(json_filename) :
     ret = []
@@ -68,27 +49,11 @@ def get_pregenerated_query_list(json_filename) :
     l = len(ret)
     return(ret)
 
-def load_context_data() :
-    pass
-
-
 is_completed = {}
 start_time = {}
 global prompt_id
 global rep_id
 global query_fn_static
-
-def TA_query(context_idx, rep_idx) :
-    text = """
-        Please return a short description of a therapuetic area for which the drug is indicated
-        enclosed in square brackets. For example "[cardiovascular]" or "[pulmonary]" or "[oncology]".
-        The drug label you will find below inside the pair of the dollar sighs ($ ... $).
-        Only return the description of a therapuetic area within square brackets, without explaining
-        what you are doing. For example, if the drug label is $the drug is being used for cough, perspiration, and running nose$,
-        then your response must be "[respiratory diseases]". Here is the drug label: $
-    """ + context_list[context_idx] + "$"
-    # print(f"from trivial_query =================={context_idx}=================================")
-    return (text)
 
 def res_is_valid(response) :
     try:
@@ -113,15 +78,15 @@ def fetch_raw_API_response_asis(query):
     # result_json = json.loads(result)
     return result
 
-def dict_to_save(context_idx, context, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response) :
+def dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response) :
     duration_s = round((request_en_time-request_st_time).total_seconds(), 1)
     ret = {
-         'context_idx' : context_idx
+         'query_idx' : query_idx
         ,'prompt_idx' : prompt_idx
         ,'request_st_time' : str(request_st_time)[0:19]
         ,'request_en_time' : str(request_en_time)[0:19]
         ,'duration_s' : duration_s
-        ,'context_length' : len(context)
+        ,'query_length' : len(pregenerated_query_list[query_idx])
         ,'response' : response
     }
     return(ret)
@@ -133,9 +98,9 @@ def response_is_valid_never(response) :
 
 response_is_valid_fn = response_is_valid_always
 
-def procure_valid_raw_API_response(context_idx, context, queue_timestamp, out_fn, prompt_idx, rep_id, response_is_valid_fn = response_is_valid_always) :
+def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, response_is_valid_fn = response_is_valid_always) :
     request_st_time = datetime.now()
-    query = query_fn_static(context_idx, rep_id)
+    query = query_fn_static(query_idx, rep_id)
     raw_response = fetch_raw_API_response_asis(query)
     request_en_time = datetime.now()
     is_valid = response_is_valid_fn(raw_response)
@@ -143,39 +108,39 @@ def procure_valid_raw_API_response(context_idx, context, queue_timestamp, out_fn
     if not is_valid :
         out_fn = "INVALID_" + out_fn
     
-    print(f"\n context_idx = {context_idx}  RESPONSE : {raw_response}\n" )
+    print(f"\n query_idx = {query_idx}  RESPONSE : {raw_response}\n" )
     try :
         response = json.loads(raw_response)
-        to_out = dict_to_save(context_idx, context, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response)
+        to_out = dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response)
     except :
-        to_out = dict_to_save(context_idx, context, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, raw_response)
+        to_out = dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, raw_response)
     
     json.dump(to_out, open(os.path.join(".", queue_timestamp, out_fn), "w"))
     return(is_valid)
 
 
-def get_extract(context_idx) :
-    start_time[context_idx] = datetime.now()
-    print(f"st idx: {context_idx}, st time = {str(start_time[context_idx])[0:19]}", flush=True)
+def get_extract(query_idx) :
+    start_time[query_idx] = datetime.now()
+    print(f"st idx: {query_idx}, st time = {str(start_time[query_idx])[0:19]}", flush=True)
     
     timestamp = str(datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
     dummy_prompt_id = "0" # ("prompt_id" is a legacy parameter)
-    out_fn = "" + timestamp + "_L" + str(context_idx).zfill(6) + "_P" + dummy_prompt_id.zfill(3) + "_R" + str(rep_id).zfill(3) + ".json"
+    out_fn = "" + timestamp + "_L" + str(query_idx).zfill(6) + "_P" + dummy_prompt_id.zfill(3) + "_R" + str(rep_id).zfill(3) + ".json"
     
-    is_completed[context_idx] = procure_valid_raw_API_response(context_idx, context_list[context_idx], queue_timestamp, out_fn, dummy_prompt_id, rep_id,  response_is_valid_fn = response_is_valid_fn)
+    is_completed[query_idx] = procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, dummy_prompt_id, rep_id,  response_is_valid_fn = response_is_valid_fn)
     
     request_en_time = datetime.now()
-    print(f"en idx: {context_idx}, en time = {request_en_time}, out_fn = {out_fn}", flush=True)
+    print(f"en idx: {query_idx}, en time = {request_en_time}, out_fn = {out_fn}", flush=True)
 
 
-def pregenerated_query(context_idx, rep_idx) :
-    return (pregenerated_query_list[context_idx])
+def pregenerated_query(query_idx, rep_idx) :
+    return (pregenerated_query_list[query_idx])
 
 def queue_range_pregenerated(l_lim, u_lim) :
     queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query)
 
 # def queue_all(l_lim, u_lim, rep, query_fn=trivial_query, response_is_valid_fn_arg = response_is_valid_always) :
-def queue_range(l_lim, u_lim, rep, query_fn=TA_query, response_is_valid_fn_arg = response_is_valid_always) :
+def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_always) :
     global response_is_valid_fn
     global rep_id
     global queue_timestamp
@@ -188,7 +153,7 @@ def queue_range(l_lim, u_lim, rep, query_fn=TA_query, response_is_valid_fn_arg =
     is_completed = {}
     start_time = {}
     print('*' * 100)
-    print(f"Total list size = {len(context_list)}. Only {u_lim - l_lim} items will be queued with indices {l_lim} to < {u_lim}. ")
+    print(f"Total list size = {len(pregenerated_query_list)}. Only {u_lim - l_lim} items will be queued with indices {l_lim} to < {u_lim}. ")
     queue_timestamp = str(datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
     print(f"A new queue started with queue_timestamp = {queue_timestamp}")
     if not os.path.exists(queue_timestamp):
@@ -241,4 +206,4 @@ def restart_outstanding() :
         time.sleep(5)
 
 config("../gpt_mini_config.json")
-queue_range_pregenerated( 1000,  1004)
+queue_range_pregenerated( 0,  3)
