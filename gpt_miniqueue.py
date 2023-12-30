@@ -19,6 +19,10 @@ queue_timestamp = ""
 
 config_fn = None
 pregenerated_query_list = None
+design_element_list = None
+context_id_list = None
+synonym_count_list = None
+outfolder_name = None
 
 def config(fn) :
     global config_fn
@@ -26,6 +30,12 @@ def config(fn) :
     config_data = json.load(open(config_fn, encoding="utf-8"))
     global pregenerated_query_list
     pregenerated_query_list = get_pregenerated_query_list(source_pregen_query_path_fn())
+    global design_element_list
+    design_element_list = get_design_element_list(source_pregen_query_path_fn())
+    global context_id_list
+    context_id_list = get_context_id_list(source_pregen_query_path_fn())
+    global synonym_count_list
+    synonym_count_list = get_synonym_count_list(source_pregen_query_path_fn())
 
 def config_data() :
     return ( json.load(open(config_fn, encoding="utf-8")) )
@@ -37,17 +47,44 @@ def source_pregen_query_path_fn() :
 
 def get_pregenerated_query_list(json_filename) :
     ret = []
-    print(f"json_filename = {json_filename}\n", flush=True)
     with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
         for one_json_obj in json.load(json_file) :
-            label = one_json_obj # .encode('utf-8')
-            # print(label, flush=True)
             try:
-                ret.append(label.get('pregenerated_query', [])[0:16000])
+                ret.append(one_json_obj.get('pregenerated_query', [])[0:16000])
             except IndexError:
                 ret.append('')
-    l = len(ret)
     return(ret)
+
+def get_design_element_list(json_filename) :
+    ret = []
+    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
+        for one_json_obj in json.load(json_file) :
+            try:
+                ret.append(one_json_obj.get('design_element', []))
+            except IndexError:
+                ret.append('')
+    return(ret)
+
+def get_context_id_list(json_filename) :
+    ret = []
+    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
+        for one_json_obj in json.load(json_file) :
+            try:
+                ret.append(one_json_obj.get('context_id', []))
+            except IndexError:
+                ret.append('')
+    return(ret)
+	
+def get_synonym_count_list(json_filename) :
+    ret = []
+    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
+        for one_json_obj in json.load(json_file) :
+            try:
+                ret.append(one_json_obj.get('synonym_count', []))
+            except IndexError:
+                ret.append('')
+    return(ret)
+	
 
 is_completed = {}
 start_time = {}
@@ -68,15 +105,17 @@ def res_is_valid(response) :
     return (True)
 
 def fetch_raw_API_response_asis(query):
-    openai.api_key = open("../openai_key.txt", "r").read().strip('\n')
-    print(f"\n{query}\n")
-    completion = openai.ChatCompletion.create(
-        model = "gpt-3.5-turbo",
-        messages = [{"role": "user", "content": query}]
-    )
-    result = completion.choices[0].message.content
-    # result_json = json.loads(result)
-    return result
+	openai.api_key = open("../openai_key.txt", "r").read().strip('\n')
+	print()
+	sys.stdout.buffer.write(query.encode('utf8'))
+	print()
+	completion = openai.ChatCompletion.create(
+	model = "gpt-3.5-turbo",
+		messages = [{"role": "user", "content": query}]
+	)
+	result = completion.choices[0].message.content
+	# result_json = json.loads(result)
+	return result
 
 def dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response) :
     duration_s = round((request_en_time-request_st_time).total_seconds(), 1)
@@ -87,8 +126,12 @@ def dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request
         ,'request_en_time' : str(request_en_time)[0:19]
         ,'duration_s' : duration_s
         ,'query_length' : len(pregenerated_query_list[query_idx])
-        ,'response' : response
+        ,'response'       : response
+        ,'design_element' : design_element_list[query_idx]
+        ,'context_id'     : context_id_list    [query_idx]
+        ,'synonym_count'  : synonym_count_list [query_idx]
     }
+    #    ,'query'      : pregenerated_query_list[query_idx]
     return(ret)
 
 def response_is_valid_always(response) :
@@ -141,29 +184,33 @@ def queue_range_pregenerated(l_lim, u_lim) :
 
 # def queue_all(l_lim, u_lim, rep, query_fn=trivial_query, response_is_valid_fn_arg = response_is_valid_always) :
 def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_always) :
-    global response_is_valid_fn
-    global rep_id
-    global queue_timestamp
-    global query_fn_static
-    query_fn_static = query_fn
-    response_is_valid_fn = response_is_valid_fn_arg
-    rep_id = rep
-    global is_completed
-    global start_time
-    is_completed = {}
-    start_time = {}
-    print('*' * 100)
-    print(f"Total list size = {len(pregenerated_query_list)}. Only {u_lim - l_lim} items will be queued with indices {l_lim} to < {u_lim}. ")
-    queue_timestamp = str(datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
-    print(f"A new queue started with queue_timestamp = {queue_timestamp}")
-    if not os.path.exists(queue_timestamp):
-        # Create a new directory because it does not exist
-        os.makedirs(queue_timestamp)
-    for idx in range(l_lim, u_lim) :
-        is_completed[idx] = False
-        threading.Thread(target=get_extract, daemon=True, args=(idx, )).start()
-        time.sleep(sleep_seconds)
-    restart_outstanding()
+	l_lim = 0 if l_lim == None else l_lim
+	u_lim = len(pregenerated_query_list) if u_lim == None else u_lim
+	global response_is_valid_fn
+	global rep_id
+	global queue_timestamp
+	global query_fn_static
+	query_fn_static = query_fn
+	response_is_valid_fn = response_is_valid_fn_arg
+	rep_id = rep
+	global is_completed
+	global start_time
+	is_completed = {}
+	start_time = {}
+	print('*' * 100)
+	print(f"Total list size = {len(pregenerated_query_list)}. Only {u_lim - l_lim} items will be queued with indices {l_lim} to < {u_lim}. ")
+	queue_timestamp = str(datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
+	global outfolder_name
+	outfolder_name = queue_timestamp
+	print(f"A new queue started with queue_timestamp = {queue_timestamp}")
+	if not os.path.exists(queue_timestamp):
+		# Create a new directory because it does not exist
+		os.makedirs(queue_timestamp)
+	for idx in range(l_lim, u_lim) :
+		is_completed[idx] = False
+		threading.Thread(target=get_extract, daemon=True, args=(idx, )).start()
+		time.sleep(sleep_seconds)
+	restart_outstanding()
 
 def is_all_completed(bool_dict) :
     ret = {}
@@ -206,4 +253,27 @@ def restart_outstanding() :
         time.sleep(5)
 
 config("../gpt_mini_config.json")
-queue_range_pregenerated( 0,  3)
+queue_range_pregenerated( 10,  13) # (None, None)
+
+'''
+def read_responses() :
+	json_file_names = [filename for filename in os.listdir(queue_timestamp) if filename.endswith('.json')]
+	
+	multiple_study_objects = []
+	for counter, json_file_name in enumerate(json_file_names):
+		with open(os.path.join(queue_timestamp, json_file_name), encoding="utf-8") as json_file:
+			json_obj = json.load(json_file)
+			response = json_obj['response']
+			if isinstance(response, list) : 
+				print(response)
+				response_indicators = [0] * json_obj['synonym_count']
+				print(response_indicators)
+				for response_item in response :
+					response_indicators[response_item] = 1
+			else :
+				print("Exception: the response is not a list type.")
+			print(*json_obj['design_element'], "    ", json_obj['synonym_count'], *response_indicators)
+
+# read_responses()
+'''
+
