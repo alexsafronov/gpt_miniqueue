@@ -13,23 +13,34 @@ import  json, os
 sleep_seconds = 0.5
 queue_timestamp = ""
 
-def read_responses(folder_path) :
-	json_file_names = [filename for filename in os.listdir(folder_path) if filename.endswith('.json')]
+
+def read_responses(gpt_response_folder_path, out_fn) :
+	out_fh = open(out_fn, "w")
+	json_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json')] # [0:75]
 	multiple_study_objects = []
 	for counter, json_file_name in enumerate(json_file_names):
-		with open(os.path.join(folder_path, json_file_name), encoding="utf-8") as json_file:
+		with open(os.path.join(gpt_response_folder_path, json_file_name), encoding="utf-8") as json_file:
 			json_obj = json.load(json_file)
 			design_element_count = len(json_obj['design_element'])
 			response = json_obj['response']
-			if isinstance(response, list) :
-				# print(response)
+			if json_obj['synonym_count'] == 0 :
+				print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
+				continue
+			elif not isinstance(response, list) :
+				print("Exception: the response is not a list type.")
+			else :
 				response_indicators = [0] * json_obj['synonym_count']
-				# print(response_indicators)
 				for response_item in response :
 					response_indicators[response_item] = 1
-			else :
-				print("Exception: the response is not a list type.")
-			print(design_element_count, *json_obj['design_element'], "    ", json_obj['synonym_count'], *response_indicators)
+				out_str = str(counter).rjust(4) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
+					"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + "\n"
+				# print(out_str)
+				out_fh.write(out_str)
 
-read_responses("./20231230_214056_704798")
+read_responses("./20231230_224919_081804", "test.txt")
+
+
+
+
+
 

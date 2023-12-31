@@ -253,7 +253,7 @@ def restart_outstanding() :
         time.sleep(5)
 
 config("../gpt_mini_config.json")
-queue_range_pregenerated( 10,  13) # (None, None)
+queue_range_pregenerated (0,  240) # (None, None)
 
 '''
 def read_responses() :
