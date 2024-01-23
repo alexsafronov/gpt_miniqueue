@@ -1,12 +1,7 @@
-# PROGRAM: gpt_miniqueue.py
+# PROGRAM: gpt_read_responses.py
 # DATE CREATED: 2023-11-24
-# PURPOSE: This module creates queues of GPT API requests, manages them be restarting
-# outstanding queues and saves results in the file system.
-# AUTHOR: Alexander Safronov
-# AUDIENCE: This package is designed for data analysis utilizing GPT API on small and medium-sized datasets by researchers
-# as a quick and low cost solution for text analysis.
-
-# The config file and the key must be in the folder above from where the main program is located
+# PURPOSE: To read GPT responses.
+# AUDIENCE:
 
 import  json, os
 
@@ -22,22 +17,28 @@ def read_responses(gpt_response_folder_path, out_fn) :
 		with open(os.path.join(gpt_response_folder_path, json_file_name), encoding="utf-8") as json_file:
 			json_obj = json.load(json_file)
 			design_element_count = len(json_obj['design_element'])
+			context_id = json_obj['context_id']
+			synonym_count = json_obj['synonym_count']
 			response = json_obj['response']
-			if json_obj['synonym_count'] == 0 :
+			print(f"{counter} synonym_count = {synonym_count} context_id = {context_id} response = {response}", flush=True)
+			if synonym_count == 0 :
 				print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
 				continue
 			elif not isinstance(response, list) :
 				print("Exception: the response is not a list type.")
 			else :
-				response_indicators = [0] * json_obj['synonym_count']
+				response_indicators = [0] * synonym_count
 				for response_item in response :
+					if response_item >= synonym_count :
+						print("INVALID RESPONSE") # , end=" ")
+						break
 					response_indicators[response_item] = 1
 				out_str = str(counter).rjust(4) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
 					"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + "\n"
 				# print(out_str)
 				out_fh.write(out_str)
 
-read_responses("./20231230_224919_081804", "test.txt")
+read_responses("./20240108_015721_133030", "test.txt")
 
 
 
