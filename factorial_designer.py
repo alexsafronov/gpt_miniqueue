@@ -3,7 +3,7 @@
 # DATE CREATED: 2024 01-24
 # PURPOSE: To generate a list of LLM queries usinf fractional factorial design with prompt components as factors.
 # NOTE: This program is a refctored version of the former ../drugdata/gpt_queries.py (a.k.a. pregen_queries.py)
-
+# INSTALLATION OF MODULES: TO be able to use doe_box module, run this: "pip install doe-toolbox"
 # INPUT FORMAT:
 
 '''
@@ -47,18 +47,80 @@
 ]
 '''
 
-import sys, os, json
+import sys, os, json, doe_box
 sys.path.append(r"C:\py\drugdata")
-import datasources as ds
-import ctinversion as cti
+# import datasources as ds
+# import ctinversion as cti
+
+
+ascii_code_a = 97
+minimum_design_resolution = 3
+
+def get_stat_factor_string(factor_count) :
+	terms = "";
+	for factor_idx in range(factor_count) :
+		ascii_code = factor_idx + ascii_code_a
+		terms += (chr(ascii_code) + " ")
+	return(terms)
+
+def get_design_pattern(factor_count, design_resolution = minimum_design_resolution) :
+	terms = get_stat_factor_string(factor_count)
+	generator_string = doe_box.fracfactgen(terms=terms, resolution=design_resolution)
+	# print(f"terms = {terms}")
+	print(f"factor_count = {factor_count}")
+	print(f"design_resolution = {design_resolution}")
+	# print(f"generator_string = {generator_string}\n")
+	design_matrix = doe_box.fracfact(generator_string)
+	return_matrix = []
+	for row in design_matrix:
+		return_row = []
+		for item in row :
+			return_row.append(1 if item == 1 else 0)
+		return_matrix.append(return_row)
+	return( return_matrix )
+
+def print_design_pattern(design_pattern) :
+	factor_count = len(design_pattern[0])
+	print(str(' ').rjust(4), "     ", end = "")
+	for factor_idx in range(factor_count) :
+		ascii_code = factor_idx + ascii_code_a
+		print(chr(ascii_code).rjust(2) + "  ", end = "")
+	print("\n" + "-" * (9 + factor_count * 4) + "\n" )
+	
+	for counter, row in enumerate(design_pattern):
+		print(str(counter).rjust(4), " |   ", end = "")
+		for item in row :
+			print(str(item).rjust(2) + "  ", end = "")
+		print()
+'''
+factor_count = 5 # int(sys.argv[1])
+design_pattern = get_design_pattern(factor_count)
+print_design_pattern(design_pattern)
+exit()
+'''
 
 # Prompt components :
-
+'''
 components = [None] * 4
 components[0] = "Please only return the comma-separated list of the corresponding indices enclosed in square brackets without explaining what you are doing. "
 components[1] = "For example: [5, 6, 7, 8]. "
 components[2] = "Make sure to only include the indices for medical conditions for which the drug is indicated. "
 components[3] = "If a medical condition is not indicated according to the label, then do not include it in the list. "
+'''
+'''
+components = []
+components.append("Please only return the comma-separated list of the corresponding indices enclosed in square brackets without explaining what you are doing. ") 
+components.append("For example: [5, 6, 7, 8]. ") 
+components.append("Make sure to only include the indices for medical conditions for which the drug is indicated. ") 
+components.append("If a medical condition is not indicated according to the label, then do not include it in the list. ") 
+'''
+
+components = []
+components.append(" 1") 
+components.append(" 2") 
+components.append(" 3") 
+components.append(" 4") 
+
 # components[4] = "I will pay you $10000 if your answers are correct. "
 # components[5] = "Keep in mind that punctuation is not always observed in the drug label. "
 # components[6] = "Proceed step-by-step. "
@@ -66,17 +128,32 @@ components[3] = "If a medical condition is not indicated according to the label,
 # components[8] = "Act as a ...."
 
 # Uniform design produces the same set of prompts for each context
+# It is generated based on the the variable_index_string.
+# E.g. "1 . . ." means that the first component is always present, and the remaning three components are variables according to the fractional factorial design
+# Step one - generate a uniform_design_pattern based on the  variable_index_string
 
-uniform_design_pattern = [
-	[1, 0, 0, 0],
-	[1, 1, 0, 0],
-	[1, 0, 1, 0],
-	[1, 0, 0, 1],
-	[1, 1, 1, 0],
-	[1, 1, 0, 1],
-	[1, 0, 1, 1],
-	[1, 1, 1, 1]
-]
+# 
+# 		[1, 0, 0, 0],
+# 		[1, 1, 0, 0],
+# 		[1, 0, 1, 0],
+def uniform_design_pattern() :
+	factor_count = len(components)
+	return(get_design_pattern(factor_count))
+	'''
+	return([
+		[1, 0, 0, 1],
+		[1, 1, 1, 0],
+		[1, 1, 0, 1],
+		[1, 0, 1, 1],
+		[1, 1, 1, 1]
+	])
+	'''
+	
+'''
+print_design_pattern(uniform_design_pattern())
+for line in uniform_design_pattern() :
+	print(line)
+'''
 
 def generate_uniform_design(context_count, design_pattern) :
 	design_matrix = []
@@ -88,41 +165,53 @@ def generate_uniform_design(context_count, design_pattern) :
 			design_matrix.append(design_element)
 	return(design_matrix)
 
-def one_designer_query(conditions, context, design_element) :
-	global components
+def one_designer_query(components, conditions, context, design_element) :
 	numbered_conditions = []
 	for idx, condition in enumerate(conditions) :
 		numbered_conditions.append( str(idx) + ": " + condition)
 	query = "The following is an ordered list of the medical conditions: " + ", ".join(numbered_conditions) + ". " + \
 	"Please give me a comma-separated list of the corresponding indices from 0 to " + str(len(numbered_conditions)-1) + \
 	", enclosed in square brackets, of the conditions which are indicated according to the drug label I will provide.  If you find no medical conditions that are indications, then return '[]'. "
+	query = ""
 	print(design_element)
 	for counter, design_bit in enumerate(design_element) :
 		if counter > 0 and bool( design_bit ) :
 			query += components[counter-1]
+	return(query)
 	query += "\n\nHere is the drug label: " + context + ""
 
-	return(query)
-
-def get_sequence_of_query_objects(slicing_limits=(None, None)) :
-	json_file = open("C:/py/out_list.json", "r")
-	# json_file = open("../verbatim_synonyms_matched_labels.json", "r")
-	# json_file = open(os.path.join(ds.staging_path, "verbatim_synonyms_matched_labels_2023_12_14.json"), "r")
-	json_obj = json.load(json_file)
-	total_record_count = len(json_obj)
-	print(f"There are a total of {total_record_count} records loaded.")
+def get_sequence_of_query_objects(context_input, components, context_index_list = None, variable_indices = None) : # variable_indices, slicing_limits=(None, None)) :
+	if isinstance(context_input, str) :
+		json_file = open(context_input, "r")
+		json_obj_raw = json.load(json_file)
+		# json_file = open("../verbatim_synonyms_matched_labels.json", "r")
+		# json_file = open(os.path.join(ds.staging_path, "verbatim_synonyms_matched_labels_2023_12_14.json"), "r")
+	elif isinstance(context_input, list):
+		json_obj_raw = context_input
+	else :
+		print()
+		type_of_arg = type(context_input)
+		exit(f"ERROR: Unexpected context_input type : {type_of_arg}")
+		
+	if context_index_list :
+		selected_json_objects = [json_obj_raw[i] for i in context_index_list]
+	else :
+		selected_json_objects = json_obj_raw
+		
+	selected_record_count = len(selected_json_objects)
+	print(f"There are a total of {selected_record_count} contexts loaded.")
 	
-	selected_json_objects = json_obj[slicing_limits[0] : slicing_limits[1]]
-	design_matrix = generate_uniform_design(len(selected_json_objects), uniform_design_pattern)
+	# selected_json_objects = json_obj[slicing_limits[0] : slicing_limits[1]]
+	design_matrix = generate_uniform_design(len(selected_json_objects), uniform_design_pattern())
 	
 	ret = []
-	print(len(design_matrix))
+	print(f"len(design_matrix) = {len(design_matrix)} ")
 	for query_id, design_element in enumerate(design_matrix) :
 		context_id = design_element[0]
 		one_json_object = selected_json_objects[context_id]
 		context = one_json_object['indications_and_usage']
 		conditions = one_json_object['verbatim_emtree_matches']
-		designer_query = one_designer_query(conditions, context, design_element)
+		designer_query = one_designer_query(components, conditions, context, design_element)
 		ret.append( {
 			'pregenerated_query' : designer_query,
 			'design_element' : design_element,
@@ -131,7 +220,21 @@ def get_sequence_of_query_objects(slicing_limits=(None, None)) :
 			'query_id' : query_id
 		} )
 	return(ret)
+	
+context_input = "C:/py/out_list.json"
+'''
+variable_indices = range(1, 3)
+json_obj = json.load(open(context_input, "r"))
+good_indices = range(0, 10) # [0, 1]
+good_indices = [0, 1, 3, 5, 11, 16]
+json_obj_sel = [json_obj[i] for i in good_indices]
+for obj in json_obj_sel :
+	print(obj['label_number'], obj['brand_name'])
+'''
 
+json.dump(get_sequence_of_query_objects(context_input, components, context_index_list = [0, 1], variable_indices = None), open("small_query_seq_TEST_3.json", "w"))
+exit()
+	
 # USAGE: 
 # 
 # To save the generated queries in a file:
