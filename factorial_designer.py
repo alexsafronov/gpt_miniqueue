@@ -107,19 +107,19 @@ components[1] = "For example: [5, 6, 7, 8]. "
 components[2] = "Make sure to only include the indices for medical conditions for which the drug is indicated. "
 components[3] = "If a medical condition is not indicated according to the label, then do not include it in the list. "
 '''
-'''
 components = []
+
 components.append("Please only return the comma-separated list of the corresponding indices enclosed in square brackets without explaining what you are doing. ") 
 components.append("For example: [5, 6, 7, 8]. ") 
 components.append("Make sure to only include the indices for medical conditions for which the drug is indicated. ") 
 components.append("If a medical condition is not indicated according to the label, then do not include it in the list. ") 
-'''
 
-components = []
+'''
 components.append(" 1") 
 components.append(" 2") 
 components.append(" 3") 
 components.append(" 4") 
+'''
 
 # components[4] = "I will pay you $10000 if your answers are correct. "
 # components[5] = "Keep in mind that punctuation is not always observed in the drug label. "
@@ -165,20 +165,20 @@ def generate_uniform_design(context_count, design_pattern) :
 			design_matrix.append(design_element)
 	return(design_matrix)
 
-def one_designer_query(components, conditions, context, design_element) :
-	numbered_conditions = []
-	for idx, condition in enumerate(conditions) :
-		numbered_conditions.append( str(idx) + ": " + condition)
-	query = "The following is an ordered list of the medical conditions: " + ", ".join(numbered_conditions) + ". " + \
-	"Please give me a comma-separated list of the corresponding indices from 0 to " + str(len(numbered_conditions)-1) + \
-	", enclosed in square brackets, of the conditions which are indicated according to the drug label I will provide.  If you find no medical conditions that are indications, then return '[]'. "
+def one_designer_query(components, verbatim_matches, context, design_element) :
+	numbered_matches = []
+	for idx, verbatim_match in enumerate(verbatim_matches) :
+		numbered_matches.append( str(idx) + ": " + verbatim_match)
 	query = ""
+	query = "The following is an ordered list of the medical conditions: " + ", ".join(numbered_matches) + ". " + \
+	"Please give me a comma-separated list of the corresponding indices from 0 to " + str(len(numbered_matches)-1) + \
+	", enclosed in square brackets, of the conditions which are indicated according to the drug label I will provide.  If you find no medical conditions that are indications, then return '[]'. "
 	print(design_element)
 	for counter, design_bit in enumerate(design_element) :
 		if counter > 0 and bool( design_bit ) :
 			query += components[counter-1]
-	return(query)
 	query += "\n\nHere is the drug label: " + context + ""
+	return(query)
 
 def get_sequence_of_query_objects(context_input, components, context_index_list = None, variable_indices = None) : # variable_indices, slicing_limits=(None, None)) :
 	if isinstance(context_input, str) :
@@ -210,13 +210,13 @@ def get_sequence_of_query_objects(context_input, components, context_index_list 
 		context_id = design_element[0]
 		one_json_object = selected_json_objects[context_id]
 		context = one_json_object['indications_and_usage']
-		conditions = one_json_object['verbatim_emtree_matches']
-		designer_query = one_designer_query(components, conditions, context, design_element)
+		verbatim_matches = one_json_object['verbatim_emtree_matches']
+		designer_query = one_designer_query(components, verbatim_matches, context, design_element)
 		ret.append( {
 			'pregenerated_query' : designer_query,
 			'design_element' : design_element,
 			'context_id' : context_id,
-			'synonym_count' : len(conditions),
+			'synonym_count' : len(verbatim_matches),
 			'query_id' : query_id
 		} )
 	return(ret)
