@@ -6,10 +6,7 @@
 # AUDIENCE: This package is designed for data analysis utilizing GPT API on small and medium-sized datasets by researchers
 # as a quick and low cost solution for text analysis.
 
-# The config file and the key must be in the folder above from where the main program is located
-
 import openai
-# from openai.error import OpenAIError, RateLimitError
 import threading, time, sys, json, os
 import ast
 from datetime import datetime
@@ -17,87 +14,29 @@ from datetime import datetime
 sleep_seconds = 0.5
 queue_timestamp = ""
 
-config_fn = None
 pregenerated_query_list = None
 design_element_list = None
 context_id_list = None
 original_context_id_list = None
 synonym_count_list = None
 outfolder_name = None
+api_key_file = None
 
-def config(fn) :
-    global config_fn
-    config_fn = fn
-    config_data = json.load(open(config_fn, encoding="utf-8"))
-    global pregenerated_query_list
-    pregenerated_query_list = get_pregenerated_query_list(source_pregen_query_path_fn())
-    global design_element_list
-    design_element_list = get_design_element_list(source_pregen_query_path_fn())
-    global context_id_list
-    context_id_list = get_context_id_list(source_pregen_query_path_fn())
-    global original_context_id_list
-    original_context_id_list = get_original_context_id_list(source_pregen_query_path_fn())
-    global synonym_count_list
-    synonym_count_list = get_synonym_count_list(source_pregen_query_path_fn())
+def populate_lists() :
+	global design_element_list
+	global context_id_list
+	global original_context_id_list
+	global synonym_count_list
+	design_element_list = []
+	context_id_list = []
+	original_context_id_list = []
+	synonym_count_list = []
+	for counter, item in enumerate(pregenerated_query_list) :
+		design_element_list.append(item['design_element'])
+		context_id_list.append(counter)
+		original_context_id_list.append(item['context_original_id'])
+		synonym_count_list.append(item['synonym_count'])
 
-def config_data() :
-    return ( json.load(open(config_fn, encoding="utf-8")) )
-
-def source_pregen_query_path_fn() :
-    config_data = json.load(open(config_fn, encoding="utf-8"))
-    # print(config_data, flush=True)
-    return(config_data.get('source_pregen_query_path_fn'))
-
-def get_pregenerated_query_list(json_filename) :
-    ret = []
-    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
-        for one_json_obj in json.load(json_file) :
-            try:
-                ret.append(one_json_obj.get('pregenerated_query', [])[0:16000])
-            except IndexError:
-                ret.append('')
-    return(ret)
-
-def get_design_element_list(json_filename) :
-    ret = []
-    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
-        for one_json_obj in json.load(json_file) :
-            try:
-                ret.append(one_json_obj.get('design_element', []))
-            except IndexError:
-                ret.append('')
-    return(ret)
-
-def get_context_id_list(json_filename) :
-    ret = []
-    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
-        for one_json_obj in json.load(json_file) :
-            try:
-                ret.append(one_json_obj.get('context_id', []))
-            except IndexError:
-                ret.append('')
-    return(ret)
-	
-def get_original_context_id_list(json_filename) :
-    ret = []
-    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
-        for one_json_obj in json.load(json_file) :
-            try:
-                ret.append(one_json_obj.get('context_original_id', []))
-            except IndexError:
-                ret.append('')
-    return(ret)
-	
-def get_synonym_count_list(json_filename) :
-    ret = []
-    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
-        for one_json_obj in json.load(json_file) :
-            try:
-                ret.append(one_json_obj.get('synonym_count', []))
-            except IndexError:
-                ret.append('')
-    return(ret)
-	
 
 is_completed = {}
 start_time = {}
@@ -107,10 +46,7 @@ global query_fn_static
 
 def res_is_valid(response) :
     try:
-        # print(f"TRYING : \n {response} \n",)
         file_data = json.loads(response)
-        # print("file_data : ", file_data)
-        # print("NONINDIC : ", file_data['non_indications'])
         if len(file_data['non_indications']) > 1 :
             return (False)
     except:
@@ -118,16 +54,17 @@ def res_is_valid(response) :
     return (True)
 
 def fetch_raw_API_response_asis(query):
-	openai.api_key = open("../openai_key.txt", "r").read().strip('\n')
+	global api_key_file
+	openai.api_key = open(api_key_file, "r").read().strip('\n')
 	print()
-	sys.stdout.buffer.write(query.encode('utf8'))
+	query_str = query['pregenerated_query']
+	sys.stdout.buffer.write(query_str.encode('utf8'))
 	print()
 	completion = openai.chat.completions.create(
 	model = "gpt-3.5-turbo",
-		messages = [{"role": "user", "content": query}]
+		messages = [{"role": "user", "content": query_str}]
 	)
 	result = completion.choices[0].message.content
-	# result_json = json.loads(result)
 	return result
 
 def dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response) :
@@ -191,12 +128,18 @@ def get_extract(query_idx) :
 
 
 def pregenerated_query(query_idx, rep_idx) :
-    return (pregenerated_query_list[query_idx])
+	ret = pregenerated_query_list[query_idx] # ['pregenerated_query']
+	# print(f"pregenerated_query_list[...] ============ {ret}")
+	return (ret)
 
-def queue_range_pregenerated(l_lim, u_lim) :
-    queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query)
+def queue_range_pregenerated(l_lim, u_lim, api_key_fn_path="../openai_key.txt", source_pregen_query_path_fn="some_query_seq.json") :
+	global pregenerated_query_list
+	global api_key_file
+	api_key_file = api_key_fn_path
+	pregenerated_query_list = json.load(open(source_pregen_query_path_fn, encoding="utf-8")) 
+	populate_lists()
+	queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query)
 
-# def queue_all(l_lim, u_lim, rep, query_fn=trivial_query, response_is_valid_fn_arg = response_is_valid_always) :
 def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_always) :
 	l_lim = 0 if l_lim == None else l_lim
 	u_lim = len(pregenerated_query_list) if u_lim == None else u_lim
@@ -266,8 +209,7 @@ def restart_outstanding() :
                 threading.Thread(target=get_extract, daemon=True, args=(idx_key, )).start()
         time.sleep(5)
 
-config("../gpt_mini_config.json")
-queue_range_pregenerated (None, None) # (0,  240)
+# queue_range_pregenerated (None, None) # (0,  240)
 
 '''
 def read_responses() :
