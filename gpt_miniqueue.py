@@ -21,6 +21,7 @@ config_fn = None
 pregenerated_query_list = None
 design_element_list = None
 context_id_list = None
+original_context_id_list = None
 synonym_count_list = None
 outfolder_name = None
 
@@ -34,6 +35,8 @@ def config(fn) :
     design_element_list = get_design_element_list(source_pregen_query_path_fn())
     global context_id_list
     context_id_list = get_context_id_list(source_pregen_query_path_fn())
+    global original_context_id_list
+    original_context_id_list = get_original_context_id_list(source_pregen_query_path_fn())
     global synonym_count_list
     synonym_count_list = get_synonym_count_list(source_pregen_query_path_fn())
 
@@ -71,6 +74,16 @@ def get_context_id_list(json_filename) :
         for one_json_obj in json.load(json_file) :
             try:
                 ret.append(one_json_obj.get('context_id', []))
+            except IndexError:
+                ret.append('')
+    return(ret)
+	
+def get_original_context_id_list(json_filename) :
+    ret = []
+    with open(os.path.join(".", json_filename), encoding="utf-8") as json_file:
+        for one_json_obj in json.load(json_file) :
+            try:
+                ret.append(one_json_obj.get('context_original_id', []))
             except IndexError:
                 ret.append('')
     return(ret)
@@ -126,10 +139,11 @@ def dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request
         ,'request_en_time' : str(request_en_time)[0:19]
         ,'duration_s' : duration_s
         ,'query_length' : len(pregenerated_query_list[query_idx])
-        ,'response'       : response
-        ,'design_element' : design_element_list[query_idx]
-        ,'context_id'     : context_id_list    [query_idx]
-        ,'synonym_count'  : synonym_count_list [query_idx]
+        ,'response'             : response
+        ,'design_element'       : design_element_list      [query_idx]
+        ,'context_id'           : context_id_list          [query_idx]
+        ,'original_context_id'  : original_context_id_list [query_idx]
+        ,'synonym_count'        : synonym_count_list       [query_idx]
     }
     #    ,'query'      : pregenerated_query_list[query_idx]
     return(ret)

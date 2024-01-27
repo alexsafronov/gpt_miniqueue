@@ -17,7 +17,8 @@ def read_responses(gpt_response_folder_path, out_fn) :
 		with open(os.path.join(gpt_response_folder_path, json_file_name), encoding="utf-8") as json_file:
 			json_obj = json.load(json_file)
 			design_element_count = len(json_obj['design_element'])
-			context_id = json_obj['context_id']
+			context_id          = json_obj['context_id']
+			original_context_id = json_obj['original_context_id']
 			synonym_count = json_obj['synonym_count']
 			response = json_obj['response']
 			print(f"{counter} synonym_count = {synonym_count} context_id = {context_id} response = {response}", flush=True)
@@ -33,12 +34,14 @@ def read_responses(gpt_response_folder_path, out_fn) :
 						print("INVALID RESPONSE") # , end=" ")
 						break
 					response_indicators[response_item] = 1
-				out_str = str(counter).rjust(4) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
+				out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
 					"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + "\n"
 				# print(out_str)
 				out_fh.write(out_str)
 
-read_responses("./20240108_015721_133030", "test.txt")
+read_responses("./20240127_013912_672162", "test.txt")
+
+
 
 
 
