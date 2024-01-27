@@ -107,12 +107,14 @@ components[1] = "For example: [5, 6, 7, 8]. "
 components[2] = "Make sure to only include the indices for medical conditions for which the drug is indicated. "
 components[3] = "If a medical condition is not indicated according to the label, then do not include it in the list. "
 '''
-components = []
 
+'''
+components = []
 components.append("Please only return the comma-separated list of the corresponding indices enclosed in square brackets without explaining what you are doing. ") 
 components.append("For example: [5, 6, 7, 8]. ") 
 components.append("Make sure to only include the indices for medical conditions for which the drug is indicated. ") 
 components.append("If a medical condition is not indicated according to the label, then do not include it in the list. ") 
+'''
 
 '''
 components.append(" 1") 
@@ -136,7 +138,7 @@ components.append(" 4")
 # 		[1, 0, 0, 0],
 # 		[1, 1, 0, 0],
 # 		[1, 0, 1, 0],
-def uniform_design_pattern() :
+def uniform_design_pattern(components) :
 	factor_count = len(components)
 	return(get_design_pattern(factor_count))
 	'''
@@ -180,7 +182,7 @@ def one_designer_query(components, verbatim_matches, context, design_element) :
 	query += "\n\nHere is the drug label: " + context + ""
 	return(query)
 
-def get_sequence_of_query_objects(context_input, components, context_index_list = None, variable_indices = None) : # variable_indices, slicing_limits=(None, None)) :
+def get_sequence_of_query_objects(context_input, components, context_index_list = None, context_id_list = None, context_id_name = 'label_number') : # variable_indices, slicing_limits=(None, None)) :
 	if isinstance(context_input, str) :
 		json_file = open(context_input, "r")
 		json_obj_raw = json.load(json_file)
@@ -192,17 +194,19 @@ def get_sequence_of_query_objects(context_input, components, context_index_list 
 		print()
 		type_of_arg = type(context_input)
 		exit(f"ERROR: Unexpected context_input type : {type_of_arg}")
-		
+	
 	if context_index_list :
 		selected_json_objects = [json_obj_raw[i] for i in context_index_list]
+	elif context_id_list :
+		selected_json_objects = [item for item in json_obj_raw if item[context_id_name] in context_id_list]
 	else :
 		selected_json_objects = json_obj_raw
-		
+	
 	selected_record_count = len(selected_json_objects)
 	print(f"There are a total of {selected_record_count} contexts loaded.")
 	
 	# selected_json_objects = json_obj[slicing_limits[0] : slicing_limits[1]]
-	design_matrix = generate_uniform_design(len(selected_json_objects), uniform_design_pattern())
+	design_matrix = generate_uniform_design(len(selected_json_objects), uniform_design_pattern(components))
 	
 	ret = []
 	print(f"len(design_matrix) = {len(design_matrix)} ")
@@ -215,15 +219,15 @@ def get_sequence_of_query_objects(context_input, components, context_index_list 
 		ret.append( {
 			'pregenerated_query' : designer_query,
 			'design_element' : design_element,
-			'context_id' : context_id,
 			'synonym_count' : len(verbatim_matches),
-			'query_id' : query_id
+			'query_id' : query_id,
+			'context_id' : context_id,
+			'context_original_id' : selected_json_objects[context_id][context_id_name],
+			'brand_name' : selected_json_objects[context_id]['brand_name']
 		} )
 	return(ret)
-	
-context_input = "C:/py/out_list.json"
+
 '''
-variable_indices = range(1, 3)
 json_obj = json.load(open(context_input, "r"))
 good_indices = range(0, 10) # [0, 1]
 good_indices = [0, 1, 3, 5, 11, 16]
@@ -232,16 +236,27 @@ for obj in json_obj_sel :
 	print(obj['label_number'], obj['brand_name'])
 '''
 
-json.dump(get_sequence_of_query_objects(context_input, components, context_index_list = [0, 1], variable_indices = None), open("small_query_seq_TEST_3.json", "w"))
-exit()
-	
-# USAGE: 
+'''
+context_input = "C:/py/out_list.json"
+json.dump(get_sequence_of_query_objects(context_input, components, context_id_list = ['NDA021342', 'NDA019034', 'NDA209388']), open("small_query_seq_TEST_3.json", "w"))
+'''
+
+'''
+# MUST DEFINE COMPONENTS BEFORE USING the function get_sequence_of_query_objects(.....)
+components = []
+components.append("Please only return the comma-separated list of the corresponding indices enclosed in square brackets without explaining what you are doing. ") 
+components.append("For example: [5, 6, 7, 8]. ") 
+components.append("Make sure to only include the indices for medical conditions for which the drug is indicated. ") 
+components.append("If a medical condition is not indicated according to the label, then do not include it in the list. ") 
+'''
+
+# USAGE:
 # 
 # To save the generated queries in a file:
-# json.dump(get_sequence_of_query_objects(components, variable_indices), open("small_query_seq_3.json", "w"))
+# json.dump(get_sequence_of_query_objects(components), open("small_query_seq_3.json", "w"))
 # 
 # To read a context list, a list of components, indices of variable components, then return a list of queries.
-# query_list = get_sequence_of_query_objects(components, variable_indices)
-
-
+# query_list = get_sequence_of_query_objects(components)
+# json.dump(get_sequence_of_query_objects(context_input, components, context_id_list = ['NDA021342', 'NDA019034', 'NDA209388']), open("small_query_seq_TEST_3.json", "w"))
+# json.dump(get_sequence_of_query_objects(context_input, components, context_index_list = [0, 1]), open("small_query_seq_TEST_3.json", "w"))
 

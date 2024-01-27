@@ -9,8 +9,8 @@
 # The config file and the key must be in the folder above from where the main program is located
 
 import openai
-from openai.error import OpenAIError, RateLimitError
-import threading, time, sys, keyboard, json, os
+# from openai.error import OpenAIError, RateLimitError
+import threading, time, sys, json, os
 import ast
 from datetime import datetime
 
@@ -109,7 +109,7 @@ def fetch_raw_API_response_asis(query):
 	print()
 	sys.stdout.buffer.write(query.encode('utf8'))
 	print()
-	completion = openai.ChatCompletion.create(
+	completion = openai.chat.completions.create(
 	model = "gpt-3.5-turbo",
 		messages = [{"role": "user", "content": query}]
 	)
