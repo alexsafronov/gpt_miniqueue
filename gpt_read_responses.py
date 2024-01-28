@@ -14,33 +14,36 @@ def is_invalid_response(response, synonym_count) :
 				return ("Response index is out of range.")
 		return(False)
 
-def read_responses(gpt_response_folder_path, out_fn) :
+def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_") :
 	out_fh = open(out_fn, "w")
 	json_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json')] # [0:75]
 	multiple_study_objects = []
 	for counter, json_file_name in enumerate(json_file_names):
-		with open(os.path.join(gpt_response_folder_path, json_file_name), encoding="utf-8") as json_file:
-			json_obj = json.load(json_file)
-			design_element_count = len(json_obj['design_element'])
-			context_id          = json_obj['context_id']
-			original_context_id = json_obj.get('original_context_id', "")
-			synonym_count = json_obj['synonym_count']
-			response = json_obj['response']
-			print(f"{counter} synonym_count = {synonym_count} context_id = {context_id} response = {response}", flush=True)
-			if synonym_count == 0 :
-				print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
-				continue
-			else :
-				response_is_invalid = is_invalid_response(response, synonym_count)
-				if response_is_invalid :
-					print (response_is_invalid)
+		if json_file_name.startswith(fn_prefix_to_skip) :
+			continue
+		else :
+			with open(os.path.join(gpt_response_folder_path, json_file_name), encoding="utf-8") as json_file:
+				json_obj = json.load(json_file)
+				design_element_count = len(json_obj['design_element'])
+				context_id          = json_obj['context_id']
+				original_context_id = json_obj.get('original_context_id', "")
+				synonym_count = json_obj['synonym_count']
+				response = json_obj['response']
+				print(f"{counter} synonym_count = {synonym_count} context_id = {context_id} response = {response}", flush=True)
+				if synonym_count == 0 :
+					print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
 					continue
-				response_indicators = [0] * synonym_count
-				for response_item in response :
-					response_indicators[response_item] = 1
-				out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
-					"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + "\n"
-				out_fh.write(out_str)
+				else :
+					response_is_invalid = is_invalid_response(response, synonym_count)
+					if response_is_invalid :
+						print (response_is_invalid)
+						continue
+					response_indicators = [0] * synonym_count
+					for response_item in response :
+						response_indicators[response_item] = 1
+					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
+						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + "\n"
+					out_fh.write(out_str)
 
 
 
