@@ -41,7 +41,6 @@ def populate_lists() :
 is_completed = {}
 start_time = {}
 global prompt_id
-global rep_id
 global query_fn_static
 
 def res_is_valid(response) :
@@ -67,11 +66,10 @@ def fetch_raw_API_response_asis(query):
 	result = completion.choices[0].message.content
 	return result
 
-def dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response) :
+def dict_to_save(query_idx, queue_timestamp, out_fn, request_st_time, request_en_time, response) :
     duration_s = round((request_en_time-request_st_time).total_seconds(), 1)
     ret = {
          'query_idx' : query_idx
-        ,'prompt_idx' : prompt_idx
         ,'request_st_time' : str(request_st_time)[0:19]
         ,'request_en_time' : str(request_en_time)[0:19]
         ,'duration_s' : duration_s
@@ -101,16 +99,14 @@ def response_is_valid_sometimes(response) :
 		# 		return ("Response index is out of range.")
 		# return(False)
 
-response_is_valid_fn = response_is_valid_sometimes
-
-def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, response_is_valid_fn = response_is_valid_sometimes) :
+def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn) :
     request_st_time = datetime.now()
-    query = query_fn_static(query_idx, rep_id)
+    query = query_fn_static(query_idx)
     raw_response = fetch_raw_API_response_asis(query)
     request_en_time = datetime.now()
 	
     try :
-    	is_valid = response_is_valid_fn(json.loads(raw_response))
+    	is_valid = response_is_valid_sometimes(json.loads(raw_response))
     except :
     	is_valid = False
     
@@ -120,9 +116,9 @@ def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, prompt_id
     print(f"\n query_idx = {query_idx}  RESPONSE : {raw_response}\n" )
     try :
         response = json.loads(raw_response)
-        to_out = dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, response)
+        to_out = dict_to_save(query_idx, queue_timestamp, out_fn, request_st_time, request_en_time, response)
     except :
-        to_out = dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, raw_response)
+        to_out = dict_to_save(query_idx, queue_timestamp, out_fn, request_st_time, request_en_time, raw_response)
     
     json.dump(to_out, open(os.path.join(outfolder_path, out_fn), "w"))
     return(is_valid)
@@ -133,16 +129,15 @@ def get_extract(query_idx) :
     print(f"st idx: {query_idx}, st time = {str(start_time[query_idx])[0:19]}", flush=True)
     
     timestamp = str(datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
-    dummy_prompt_id = "0" # ("prompt_id" is a legacy parameter)
-    out_fn = "" + timestamp + "_L" + str(query_idx).zfill(6) + "_P" + dummy_prompt_id.zfill(3) + "_R" + str(rep_id).zfill(3) + ".json"
+    out_fn = "" + timestamp + "_L" + str(query_idx).zfill(6) + ".json"
     
-    is_completed[query_idx] = procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, dummy_prompt_id, rep_id,  response_is_valid_fn = response_is_valid_fn)
+    is_completed[query_idx] = procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn)
     
     request_en_time = datetime.now()
     print(f"en idx: {query_idx}, en time = {request_en_time}, out_fn = {out_fn}", flush=True)
 
 
-def pregenerated_query(query_idx, rep_idx) :
+def pregenerated_query(query_idx) :
 	ret = pregenerated_query_list[query_idx] # ['pregenerated_query']
 	# print(f"pregenerated_query_list[...] ============ {ret}")
 	return (ret)
@@ -159,12 +154,10 @@ def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_vali
 	l_lim = 0 if l_lim == None else l_lim
 	u_lim = len(pregenerated_query_list) if u_lim == None else u_lim
 	global response_is_valid_fn
-	global rep_id
 	global queue_timestamp
 	global query_fn_static
 	query_fn_static = query_fn
 	response_is_valid_fn = response_is_valid_fn_arg
-	rep_id = rep
 	global is_completed
 	global start_time
 	is_completed = {}
