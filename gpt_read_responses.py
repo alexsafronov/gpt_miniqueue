@@ -29,7 +29,7 @@ def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_
 				original_context_id = json_obj.get('original_context_id', "")
 				synonym_count = json_obj['synonym_count']
 				response = json_obj['response']
-				print(f"{counter} synonym_count = {synonym_count} context_id = {context_id} response = {response}", flush=True)
+				print(f"{counter} {original_context_id} synonym_count = {synonym_count} context_id = {context_id} response = {response}", flush=True)
 				if synonym_count == 0 :
 					print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
 					continue
@@ -49,6 +49,7 @@ def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_
 
 def read_correct_answers(file_path_name) :
 	with open(file_path_name, encoding="utf-8") as plain_file :
+		counter = 0
 		while True:
 			content=plain_file.readline()
 			arr = content.split()
@@ -60,7 +61,8 @@ def read_correct_answers(file_path_name) :
 			answer_list_n = []
 			for item in answer_list_c :
 				answer_list_n.append(int(item))
-			print(original_context_id, answer_list_n, end="\n")
+			print(str(counter).rjust(3), original_context_id, answer_list_n, end="\n")
+			counter += 1;
 		plain_file.close()
 	return()
 
