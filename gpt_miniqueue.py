@@ -19,7 +19,7 @@ design_element_list = None
 context_id_list = None
 original_context_id_list = None
 synonym_count_list = None
-outfolder_name = None
+outfolder_path = None
 api_key_file = None
 
 def populate_lists() :
@@ -33,7 +33,7 @@ def populate_lists() :
 	synonym_count_list = []
 	for counter, item in enumerate(pregenerated_query_list) :
 		design_element_list.append(item['design_element'])
-		context_id_list.append(counter)
+		context_id_list.append(item['context_id'])
 		original_context_id_list.append(item['context_original_id'])
 		synonym_count_list.append(item['synonym_count'])
 
@@ -90,14 +90,29 @@ def response_is_valid_always(response) :
 def response_is_valid_never(response) :
     return (False)
 
-response_is_valid_fn = response_is_valid_always
+def response_is_valid_sometimes(response) :
+	if not isinstance(response, list) :
+		return (False)
+		# return("Exception: the response is not a list type.")
+	else :
+		return(True)
+		# for response_item in response :
+		# 	if response_item >= synonym_count :
+		# 		return ("Response index is out of range.")
+		# return(False)
 
-def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, response_is_valid_fn = response_is_valid_always) :
+response_is_valid_fn = response_is_valid_sometimes
+
+def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, response_is_valid_fn = response_is_valid_sometimes) :
     request_st_time = datetime.now()
     query = query_fn_static(query_idx, rep_id)
     raw_response = fetch_raw_API_response_asis(query)
     request_en_time = datetime.now()
-    is_valid = response_is_valid_fn(raw_response)
+	
+    try :
+    	is_valid = response_is_valid_fn(json.loads(raw_response))
+    except :
+    	is_valid = False
     
     if not is_valid :
         out_fn = "INVALID_" + out_fn
@@ -109,7 +124,7 @@ def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, prompt_id
     except :
         to_out = dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, raw_response)
     
-    json.dump(to_out, open(os.path.join(outfolder_name, out_fn), "w"))
+    json.dump(to_out, open(os.path.join(outfolder_path, out_fn), "w"))
     return(is_valid)
 
 
@@ -138,9 +153,9 @@ def queue_range_pregenerated(l_lim, u_lim, api_key_fn_path="../openai_key.txt", 
 	api_key_file = api_key_fn_path
 	pregenerated_query_list = json.load(open(source_pregen_query_path_fn, encoding="utf-8")) 
 	populate_lists()
-	queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query, base_output_folder = base_output_folder)
+	return(queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query, base_output_folder = base_output_folder))
 
-def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_always, base_output_folder=".") :
+def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_sometimes, base_output_folder=".") :
 	l_lim = 0 if l_lim == None else l_lim
 	u_lim = len(pregenerated_query_list) if u_lim == None else u_lim
 	global response_is_valid_fn
@@ -157,17 +172,18 @@ def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_vali
 	print('*' * 100)
 	print(f"Total list size = {len(pregenerated_query_list)}. Only {u_lim - l_lim} items will be queued with indices {l_lim} to < {u_lim}. ")
 	queue_timestamp = str(datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
-	global outfolder_name
-	outfolder_name = os.path.join(base_output_folder, queue_timestamp)
+	global outfolder_path
+	outfolder_path = os.path.join(base_output_folder, queue_timestamp)
 	print(f"A new queue started with queue_timestamp = {queue_timestamp}")
-	if not os.path.exists(outfolder_name):
+	if not os.path.exists(outfolder_path):
 		# Create a new directory because it does not exist
-		os.makedirs(outfolder_name)
+		os.makedirs(outfolder_path)
 	for idx in range(l_lim, u_lim) :
 		is_completed[idx] = False
 		threading.Thread(target=get_extract, daemon=True, args=(idx, )).start()
 		time.sleep(sleep_seconds)
 	restart_outstanding()
+	return(outfolder_path)
 
 def is_all_completed(bool_dict) :
     ret = {}
