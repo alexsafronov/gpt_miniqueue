@@ -14,10 +14,58 @@ def is_invalid_response(response, synonym_count) :
 				return ("Response index is out of range.")
 		return(False)
 
+def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None) :
+	json_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json')] # [0:75]
+	dict_of_response_lists = {}
+	
+	correct_answers  = {}
+	verbatim_matches = {}
+	contexts         = {}
+	
+	if correct_answers_file_path_name :
+		correct_answers  = read_correct_answers(correct_answers_file_path_name)
+		
+	if verbatim_matches_file_path_name :
+		verbatim_matches = read_verbatim_matches(verbatim_matches_file_path_name)
+		contexts         = read_contexts        (verbatim_matches_file_path_name)
+		
+	for counter, json_file_name in enumerate(json_file_names):
+		if json_file_name.startswith(fn_prefix_to_skip) :
+			continue
+		else :
+			with open(os.path.join(gpt_response_folder_path, json_file_name), encoding="utf-8") as json_file:
+				json_obj = json.load(json_file)
+				original_context_id = json_obj.get('original_context_id', "")
+				if not original_context_id in dict_of_response_lists :
+					dict_of_response_lists[original_context_id] = {
+						'context' : contexts[original_context_id],
+						'verbatim_matches' : verbatim_matches[original_context_id],
+						'correct_answers' : correct_answers[original_context_id],
+						'api_responses' : []
+					}
+				
+				design_element_count = len(json_obj['design_element'])
+				synonym_count = json_obj['synonym_count']
+				
+				if synonym_count == 0 :
+					print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
+					continue
+				else :
+					response_is_invalid = is_invalid_response(json_obj['response'], synonym_count)
+					if response_is_invalid :
+						print (response_is_invalid)
+						continue
+					dict_of_response_lists[original_context_id]['api_responses'].append(json_obj)
+					response_indicators = [0] * synonym_count
+					for response_item in json_obj['response'] :
+						response_indicators[response_item] = 1
+					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
+						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + "\n"
+	return(dict_of_response_lists)
+
 def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None) :
 	out_fh = open(out_fn, "w")
 	json_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json')] # [0:75]
-	multiple_study_objects = []
 	correct_answers  = {}
 	verbatim_matches = {}
 	
@@ -26,6 +74,7 @@ def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_
 		
 	if verbatim_matches_file_path_name :
 		verbatim_matches = read_verbatim_matches(verbatim_matches_file_path_name)
+		contexts         = read_contexts        (verbatim_matches_file_path_name)
 		
 	for counter, json_file_name in enumerate(json_file_names):
 		if json_file_name.startswith(fn_prefix_to_skip) :
@@ -40,6 +89,7 @@ def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_
 				response = json_obj['response']
 				correct_answer      = correct_answers.get(original_context_id)
 				verbatim_match_list = verbatim_matches.get(original_context_id)
+				context             = contexts.get(        original_context_id)
 				print(f"{str(counter).rjust(5)} {original_context_id} syn_cnt = {synonym_count} context_id = {context_id} response = {response} correct_ans = {correct_answer} verbat_matches = {verbatim_match_list}", flush=True)
 				if synonym_count == 0 :
 					print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
@@ -88,3 +138,12 @@ def read_verbatim_matches(file_path_name, verbatim_match_field_name = 'verbatim_
 			verbatims[marked_item[original_context_id_name]] = marked_item[verbatim_match_field_name]
 	return(verbatims)
 
+def read_contexts(file_path_name, context_field_name = 'indications_and_usage', original_context_id_name = 'label_number') :
+	contexts = {}
+	with open(file_path_name, encoding="utf-8") as json_file :
+		dict_obj = json.load(json_file)
+		# print(dict_obj)
+		for marked_item in dict_obj :
+			# print(marked_item[context_field_name])
+			contexts[marked_item[original_context_id_name]] = marked_item[context_field_name]
+	return(contexts)
