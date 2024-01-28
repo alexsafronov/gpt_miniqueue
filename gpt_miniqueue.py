@@ -109,7 +109,7 @@ def procure_valid_raw_API_response(query_idx, queue_timestamp, out_fn, prompt_id
     except :
         to_out = dict_to_save(query_idx, queue_timestamp, out_fn, prompt_idx, rep_id, request_st_time, request_en_time, raw_response)
     
-    json.dump(to_out, open(os.path.join(".", queue_timestamp, out_fn), "w"))
+    json.dump(to_out, open(os.path.join(outfolder_name, out_fn), "w"))
     return(is_valid)
 
 
@@ -132,15 +132,15 @@ def pregenerated_query(query_idx, rep_idx) :
 	# print(f"pregenerated_query_list[...] ============ {ret}")
 	return (ret)
 
-def queue_range_pregenerated(l_lim, u_lim, api_key_fn_path="../openai_key.txt", source_pregen_query_path_fn="some_query_seq.json") :
+def queue_range_pregenerated(l_lim, u_lim, api_key_fn_path="../openai_key.txt", source_pregen_query_path_fn="some_query_seq.json", base_output_folder=".") :
 	global pregenerated_query_list
 	global api_key_file
 	api_key_file = api_key_fn_path
 	pregenerated_query_list = json.load(open(source_pregen_query_path_fn, encoding="utf-8")) 
 	populate_lists()
-	queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query)
+	queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query, base_output_folder = base_output_folder)
 
-def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_always) :
+def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_always, base_output_folder=".") :
 	l_lim = 0 if l_lim == None else l_lim
 	u_lim = len(pregenerated_query_list) if u_lim == None else u_lim
 	global response_is_valid_fn
@@ -158,11 +158,11 @@ def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_vali
 	print(f"Total list size = {len(pregenerated_query_list)}. Only {u_lim - l_lim} items will be queued with indices {l_lim} to < {u_lim}. ")
 	queue_timestamp = str(datetime.now().strftime("%Y%m%d_%H%M%S_%f"))
 	global outfolder_name
-	outfolder_name = queue_timestamp
+	outfolder_name = os.path.join(base_output_folder, queue_timestamp)
 	print(f"A new queue started with queue_timestamp = {queue_timestamp}")
-	if not os.path.exists(queue_timestamp):
+	if not os.path.exists(outfolder_name):
 		# Create a new directory because it does not exist
-		os.makedirs(queue_timestamp)
+		os.makedirs(outfolder_name)
 	for idx in range(l_lim, u_lim) :
 		is_completed[idx] = False
 		threading.Thread(target=get_extract, daemon=True, args=(idx, )).start()

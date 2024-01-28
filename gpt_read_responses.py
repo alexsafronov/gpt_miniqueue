@@ -39,7 +39,7 @@ def read_responses(gpt_response_folder_path, out_fn) :
 				# print(out_str)
 				out_fh.write(out_str)
 
-read_responses("./20240128_003347_140331", "test.txt")
+read_responses("./20240128_010100_095628", "test.txt")
 
 
 
