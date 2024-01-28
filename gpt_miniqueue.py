@@ -73,7 +73,7 @@ def dict_to_save(query_idx, queue_timestamp, out_fn, request_st_time, request_en
         ,'request_st_time' : str(request_st_time)[0:19]
         ,'request_en_time' : str(request_en_time)[0:19]
         ,'duration_s' : duration_s
-        ,'query_length' : len(pregenerated_query_list[query_idx])
+        ,'query_length' : len(pregenerated_query_list[query_idx]['pregenerated_query'])
         ,'response'             : response
         ,'design_element'       : design_element_list      [query_idx]
         ,'context_id'           : context_id_list          [query_idx]
