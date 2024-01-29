@@ -29,9 +29,24 @@ def false_positive_verbatims(response, correct_answers, verbatim_matches) :
 			# print(type(idx), "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
 			false_verbatims.append(verbatim_matches[idx])
 	return(false_verbatims)
-
+	
+def enumerated_list_string(list) :
+	enumerated_list = []
+	for counter, item in enumerate(list) :
+		enumerated_list.append(str(counter) + ": " + item)
+	return( ",   ".join(enumerated_list) + ".")
+	
+def valid_filenames_sorted_by_query_id(gpt_response_folder_path, fn_prefix_to_skip="INVALID_") :
+	valid_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json') and not filename.startswith(fn_prefix_to_skip)]
+	# Assuming the file name is formatted as "20240129_011233_722566_L000211.json" - sorting by "L000211" (query ID)
+	sorted_file_names = sorted(valid_file_names, key=lambda x: x[24:32])
+	return(sorted_file_names)
+	# for item in sorted_file_names :
+	#	print(f"{item} ={item[24:30]}=")
+	
 def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None, query_list_filename=None) :
-	json_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json')] # [0:75]
+	json_file_names = valid_filenames_sorted_by_query_id(gpt_response_folder_path, fn_prefix_to_skip=fn_prefix_to_skip)
+	
 	dict_of_response_lists = {}
 	
 	correct_answers  = {}
@@ -68,7 +83,10 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 					print("(", str(context_counter).rjust(4), ")", original_context_id, "\n")
 					context_counter += 1
 					print(contexts[original_context_id], "\n")
-					print(verbatim_matches[original_context_id], "\n")
+					# print(verbatim_matches[original_context_id], "\n")
+					print(enumerated_list_string(verbatim_matches[original_context_id]), "\n")
+					print("\n                     Prompt Design       Classification of the verbatim terms")
+					print(  "                     -------------       ---------------------------------")
 				
 				design_element_count = len(json_obj['design_element'])
 				synonym_count = json_obj['synonym_count']
@@ -91,8 +109,8 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 						response_indicators[response_item] = 1
 					# print(f"query_idx = {query_idx}, query = \n{query_list[query_idx] }\n\n")
 					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
-						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) +  "    false_neg : "  + ", ".join(json_obj['false_negative_verbatims']) + ". " + \
-						"    false_pos : "  + ", ".join(json_obj['false_positive_verbatims']) + ". " 
+						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) +  "    FALSE_NEG : "  + ", ".join(json_obj['false_negative_verbatims']) + ". " + \
+						"    FALSE_POS : "  + ", ".join(json_obj['false_positive_verbatims']) + ". " 
 					print(out_str)
 	return(dict_of_response_lists)
 
