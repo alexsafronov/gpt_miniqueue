@@ -35,7 +35,7 @@ def enumerated_list_string(list) :
 	for counter, item in enumerate(list) :
 		enumerated_list.append(str(counter) + ": " + item)
 	return( ",   ".join(enumerated_list) + ".")
-	
+
 def valid_filenames_sorted_by_query_id(gpt_response_folder_path, fn_prefix_to_skip="INVALID_") :
 	valid_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json') and not filename.startswith(fn_prefix_to_skip)]
 	# Assuming the file name is formatted as "20240129_011233_722566_L000211.json" - sorting by "L000211" (query ID)
@@ -43,7 +43,7 @@ def valid_filenames_sorted_by_query_id(gpt_response_folder_path, fn_prefix_to_sk
 	return(sorted_file_names)
 	# for item in sorted_file_names :
 	#	print(f"{item} ={item[24:30]}=")
-	
+
 def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None, query_list_filename=None) :
 	json_file_names = valid_filenames_sorted_by_query_id(gpt_response_folder_path, fn_prefix_to_skip=fn_prefix_to_skip)
 	
@@ -52,6 +52,9 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 	correct_answers  = {}
 	verbatim_matches = {}
 	contexts         = {}
+	tot_false_negative_verbatim_count = 0
+	tot_false_positive_verbatim_count = 0
+	tot_query_count = 0
 	
 	if correct_answers_file_path_name :
 		correct_answers  = read_correct_answers(correct_answers_file_path_name)
@@ -103,16 +106,34 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 					# print(query_idx, " ===============================================================================================================================================")
 					json_obj['false_negative_verbatims'] = false_negative_verbatims(json_obj['response'], correct_answers[original_context_id], verbatim_matches[original_context_id])
 					json_obj['false_positive_verbatims'] = false_positive_verbatims(json_obj['response'], correct_answers[original_context_id], verbatim_matches[original_context_id])
+					tot_false_negative_verbatim_count += len(json_obj['false_negative_verbatims'])
+					tot_false_positive_verbatim_count += len(json_obj['false_positive_verbatims'])
+					tot_query_count += 1
+					
 					dict_of_response_lists[original_context_id]['api_responses'].append(json_obj)
 					response_indicators = [0] * synonym_count
 					for response_item in json_obj['response'] :
 						response_indicators[response_item] = 1
 					# print(f"query_idx = {query_idx}, query = \n{query_list[query_idx] }\n\n")
 					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
-						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) +  "    FALSE_NEG : "  + ", ".join(json_obj['false_negative_verbatims']) + ". " + \
-						"    FALSE_POS : "  + ", ".join(json_obj['false_positive_verbatims']) + ". " 
+						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + \
+						"    FALSE_NEG : "  + ", ".join(json_obj['false_negative_verbatims']) + ". " + str(tot_false_negative_verbatim_count) + \
+						"    FALSE_POS : "  + ", ".join(json_obj['false_positive_verbatims']) + ". " + str(tot_false_positive_verbatim_count)
 					print(out_str)
 	return(dict_of_response_lists)
+
+def statistics(dict_of_response_lists) :
+	tot_false_negative_verbatim_count = 0
+	tot_false_positive_verbatim_count = 0
+	tot_query_count = 0
+	for key in dict_of_response_lists :
+		for response in dict_of_response_lists[key]['api_responses'] :
+			tot_false_negative_verbatim_count += len(response['false_negative_verbatims'])
+			tot_false_positive_verbatim_count += len(response['false_positive_verbatims'])
+			tot_query_count += 1
+	print(f"tot_false_negative_verbatim_count = {tot_false_negative_verbatim_count}")
+	print(f"tot_false_positive_verbatim_count = {tot_false_positive_verbatim_count}")
+	print(f"tot_query_count = {tot_query_count}")
 
 def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None) :
 	out_fh = open(out_fn, "w")
