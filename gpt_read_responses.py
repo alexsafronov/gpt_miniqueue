@@ -13,8 +13,24 @@ def is_invalid_response(response, synonym_count) :
 			if response_item >= synonym_count :
 				return ("Response index is out of range.")
 		return(False)
+		
 
-def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None) :
+def false_negative_verbatims(response, correct_answers, verbatim_matches) :
+	false_verbatims = []
+	for idx in correct_answers :
+		if idx not in response :
+			false_verbatims.append(verbatim_matches[idx])
+	return(false_verbatims)
+
+def false_positive_verbatims(response, correct_answers, verbatim_matches) :
+	false_verbatims = []
+	for idx in response :
+		if idx not in correct_answers :
+			# print(type(idx), "+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+			false_verbatims.append(verbatim_matches[idx])
+	return(false_verbatims)
+
+def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None, query_list_filename=None) :
 	json_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json')] # [0:75]
 	dict_of_response_lists = {}
 	
@@ -25,10 +41,15 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 	if correct_answers_file_path_name :
 		correct_answers  = read_correct_answers(correct_answers_file_path_name)
 		
+	if query_list_filename :
+		query_list       = read_query_list(query_list_filename)
+		
 	if verbatim_matches_file_path_name :
 		verbatim_matches = read_verbatim_matches(verbatim_matches_file_path_name)
 		contexts         = read_contexts        (verbatim_matches_file_path_name)
 		
+	context_counter = 0
+	
 	for counter, json_file_name in enumerate(json_file_names):
 		if json_file_name.startswith(fn_prefix_to_skip) :
 			continue
@@ -43,9 +64,15 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 						'correct_answers' : correct_answers[original_context_id],
 						'api_responses' : []
 					}
+					print("\n\n")
+					print("(", str(context_counter).rjust(4), ")", original_context_id, "\n")
+					context_counter += 1
+					print(contexts[original_context_id], "\n")
+					print(verbatim_matches[original_context_id], "\n")
 				
 				design_element_count = len(json_obj['design_element'])
 				synonym_count = json_obj['synonym_count']
+				query_idx = json_obj['query_idx']
 				
 				if synonym_count == 0 :
 					print(str(counter).rjust(4), str(design_element_count).rjust(2), " ".join(str(x).rjust(2) for x in json_obj['design_element']), "    ", json_obj['synonym_count'], " <- Exception: no synonyms were supplied.")
@@ -55,12 +82,18 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 					if response_is_invalid :
 						print (response_is_invalid)
 						continue
+					# print(query_idx, " ===============================================================================================================================================")
+					json_obj['false_negative_verbatims'] = false_negative_verbatims(json_obj['response'], correct_answers[original_context_id], verbatim_matches[original_context_id])
+					json_obj['false_positive_verbatims'] = false_positive_verbatims(json_obj['response'], correct_answers[original_context_id], verbatim_matches[original_context_id])
 					dict_of_response_lists[original_context_id]['api_responses'].append(json_obj)
 					response_indicators = [0] * synonym_count
 					for response_item in json_obj['response'] :
 						response_indicators[response_item] = 1
+					# print(f"query_idx = {query_idx}, query = \n{query_list[query_idx] }\n\n")
 					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
-						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + "\n"
+						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) +  "    false_neg : "  + ", ".join(json_obj['false_negative_verbatims']) + ". " + \
+						"    false_pos : "  + ", ".join(json_obj['false_positive_verbatims']) + ". " 
+					print(out_str)
 	return(dict_of_response_lists)
 
 def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None) :
@@ -147,3 +180,15 @@ def read_contexts(file_path_name, context_field_name = 'indications_and_usage', 
 			# print(marked_item[context_field_name])
 			contexts[marked_item[original_context_id_name]] = marked_item[context_field_name]
 	return(contexts)
+	
+def read_query_list(query_list_filename, query_field_name = 'pregenerated_query', query_id_name = 'query_id') :
+	queries = {}
+	with open(query_list_filename, encoding="utf-8") as json_file :
+		dict_obj = json.load(json_file)
+		# print(dict_obj)
+		for marked_item in dict_obj :
+			# print(marked_item[context_field_name])
+			queries[marked_item[query_id_name]] = marked_item[query_field_name]
+	return(queries)
+
+

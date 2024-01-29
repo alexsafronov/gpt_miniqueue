@@ -93,6 +93,9 @@ def response_is_valid_sometimes(response) :
 		return (False)
 		# return("Exception: the response is not a list type.")
 	else :
+		for item in response :
+			if not isinstance(item, int) :
+				return(False)
 		return(True)
 		# for response_item in response :
 		# 	if response_item >= synonym_count :
