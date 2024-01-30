@@ -167,14 +167,15 @@ def generate_uniform_design(context_count, design_pattern) :
 			design_matrix.append(design_element)
 	return(design_matrix)
 
-def one_designer_query(components, verbatim_matches, context, design_element) :
+def one_designer_query(components, verbatim_matches, context, design_element, persistent_component = "") :
 	numbered_matches = []
 	for idx, verbatim_match in enumerate(verbatim_matches) :
 		numbered_matches.append( str(idx) + ": " + verbatim_match)
 	query = ""
-	query = "The following is an ordered list of the medical conditions: " + ", ".join(numbered_matches) + ". " + \
-	"Please give me a comma-separated list of the corresponding indices from 0 to " + str(len(numbered_matches)-1) + \
-	", enclosed in square brackets, of the conditions which are indicated according to the drug label I will provide.  If you find no medical conditions that are indications, then return '[]'. "
+	query = "The following is an ordered list of the medical conditions: " + ", ".join(numbered_matches) + ". " \
+		+ "Please give me a comma-separated list of the corresponding indices from 0 to " + str(len(numbered_matches)-1) \
+		+ ", enclosed in square brackets, of the conditions which are indicated according to the drug label I will provide. " \
+		+ " If you find no medical conditions that are indications, then return '[]'. " + persistent_component
 	print(design_element)
 	for counter, design_bit in enumerate(design_element) :
 		if counter > 0 and bool( design_bit ) :
@@ -182,7 +183,7 @@ def one_designer_query(components, verbatim_matches, context, design_element) :
 	query += "\n\nHere is the drug label: " + context + ""
 	return(query)
 
-def get_sequence_of_query_objects(context_input, components, context_index_list = None, context_id_list = None, context_id_name = 'label_number') : # variable_indices, slicing_limits=(None, None)) :
+def get_sequence_of_query_objects(context_input, components, context_index_list = None, context_id_list = None, context_id_name = 'label_number', persistent_component="") : # variable_indices, slicing_limits=(None, None)) :
 	if isinstance(context_input, str) :
 		json_file = open(context_input, "r")
 		json_obj_raw = json.load(json_file)
@@ -215,7 +216,7 @@ def get_sequence_of_query_objects(context_input, components, context_index_list 
 		one_json_object = selected_json_objects[context_id]
 		context = one_json_object['indications_and_usage']
 		verbatim_matches = one_json_object['verbatim_emtree_matches']
-		designer_query = one_designer_query(components, verbatim_matches, context, design_element)
+		designer_query = one_designer_query(components, verbatim_matches, context, design_element, persistent_component=persistent_component)
 		ret.append( {
 			'pregenerated_query' : designer_query,
 			'design_element' : design_element,

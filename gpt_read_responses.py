@@ -4,6 +4,10 @@
 # AUDIENCE:
 
 import json, os, sys
+import pandas as pd
+from IPython.display import display
+import statsmodels.api as sm 
+from statsmodels.formula.api import ols 
 
 def is_invalid_response(response, synonym_count) :
 	if not isinstance(response, list) :
@@ -13,7 +17,6 @@ def is_invalid_response(response, synonym_count) :
 			if response_item >= synonym_count :
 				return ("Response index is out of range.")
 		return(False)
-		
 
 def false_negative_verbatims(response, correct_answers, verbatim_matches) :
 	false_verbatims = []
@@ -124,6 +127,57 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 	sys.stdout = old_target
 	return(dict_of_response_lists)
 
+def output_dict_of_response_lists_to_flatfile(file_path_name, dict_of_response_lists) :
+	out_fh = open(file_path_name, "w")
+	counter = 0
+	for context_id in dict_of_response_lists :
+		for response in dict_of_response_lists[context_id]['api_responses'] :
+			design_element = response['design_element']
+			tot_miscalass_count = len(response['false_negative_verbatims']) + len(response['false_positive_verbatims'])
+			design_element_count = len(response['design_element'])
+			flag = "*" if tot_miscalass_count > response['synonym_count'] else ""
+			percent_miscalassified = tot_miscalass_count / response['synonym_count'] * 100
+			out_str = str(counter).rjust(4) + " " + context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in response['design_element']) + \
+				"    " + str(response['synonym_count']).rjust(3) + "  " + str(tot_miscalass_count).rjust(2) + "  " + flag + " " + "{:.1f}".format(percent_miscalassified).rjust(6)
+			counter += 1
+			out_fh.write(out_str + "\n")
+
+def return_dataframe(dict_of_response_lists) :
+	counter = 0
+	list_context_id = []
+	c1 = []
+	c2 = []
+	c3 = []
+	c4 = []
+	pct_misclass = []
+	for context_id in dict_of_response_lists :
+		for response in dict_of_response_lists[context_id]['api_responses'] :
+			design_element = response['design_element']
+			tot_miscalass_count = len(response['false_negative_verbatims']) + len(response['false_positive_verbatims'])
+			design_element_count = len(response['design_element'])
+			flag = "*" if tot_miscalass_count > response['synonym_count'] else ""
+			percent_miscalassified = round(tot_miscalass_count / response['synonym_count'] * 100, 1)
+			list_context_id.append(context_id)
+			c1.append(response['design_element'][1]) 
+			c2.append(response['design_element'][2]) 
+			c3.append(response['design_element'][3]) 
+			c4.append(response['design_element'][4]) 
+			pct_misclass.append(percent_miscalassified) 
+			out_str = str(counter).rjust(4) + " " + context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in response['design_element']) + \
+				"    " + str(response['synonym_count']).rjust(3) + "  " + str(tot_miscalass_count).rjust(2) + "  " + flag + " " + "{:.1f}".format(percent_miscalassified).rjust(6)
+			counter += 1
+			# out_fh.write(out_str + "\n")
+	dict = {'context_id': list_context_id, 'c1': c1, 'c2': c2, 'c3': c3, 'c4': c4, 'pct_misclass' : pct_misclass}
+	return(pd.DataFrame(dict))
+
+def display_4_way_anova(responses) :
+	df = return_dataframe(responses)
+	# display(df.to_string())
+	model = ols(  'pct_misclass ~ C(c1) + C(c2) + C(c3) + C(c4)' , data=df).fit() 
+	result = sm.stats.anova_lm(model, type=2) 
+	print(result) 
+
+
 def statistics(dict_of_response_lists) :
 	tot_false_negative_verbatim_count = 0
 	tot_false_positive_verbatim_count = 0
@@ -133,8 +187,10 @@ def statistics(dict_of_response_lists) :
 			tot_false_negative_verbatim_count += len(response['false_negative_verbatims'])
 			tot_false_positive_verbatim_count += len(response['false_positive_verbatims'])
 			tot_query_count += 1
+	tot_miscalass_count = tot_false_negative_verbatim_count + tot_false_positive_verbatim_count
 	print(f"tot_false_negative_verbatim_count = {tot_false_negative_verbatim_count}")
 	print(f"tot_false_positive_verbatim_count = {tot_false_positive_verbatim_count}")
+	print(f"tot_miscalass_count = {tot_miscalass_count}")
 	print(f"tot_query_count = {tot_query_count}")
 
 def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None) :
