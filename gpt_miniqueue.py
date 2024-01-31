@@ -165,9 +165,9 @@ def queue_range_pregenerated(l_lim, u_lim, api_key_fn_path="../openai_key.txt", 
 	populate_lists()
 	return(queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query, base_output_folder = base_output_folder))
 	
-def save_all_components_in_a_folder(outfolder_path) :
+def save_all_components_in_a_folder(outfolder_path, queue_timestamp) :
 	file_path_name = os.path.join(outfolder_path, "all_components.json")
-	to_save = { 'persistent_component' : persistent_component, 'components' : components }
+	to_save = { 'queue_timestamp' : queue_timestamp, 'persistent_component' : persistent_component, 'components' : components }
 	json.dump(to_save, open(file_path_name, "w"))
 	
 def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_sometimes, base_output_folder=".") :
@@ -191,7 +191,7 @@ def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_vali
 	if not os.path.exists(outfolder_path):
 		# Create a new directory because it does not exist
 		os.makedirs(outfolder_path)
-		save_all_components_in_a_folder(outfolder_path)
+		save_all_components_in_a_folder(outfolder_path, queue_timestamp)
 	for idx in range(l_lim, u_lim) :
 		is_completed[idx] = False
 		threading.Thread(target=get_extract, daemon=True, args=(idx, )).start()
