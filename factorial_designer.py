@@ -166,21 +166,42 @@ def generate_uniform_design(context_count, design_pattern) :
 			design_element += pattern_element
 			design_matrix.append(design_element)
 	return(design_matrix)
+	
+'''
+template = "no {feeling} about {food}"
+def filler(template, food, feeling) :
+	print (template)
+	print (template.format(food=food, feeling=feeling))
+
+filler(template, "cake", "lust")
+'''
 
 def one_designer_query(components, verbatim_matches, context, design_element, persistent_component = "") :
 	numbered_matches = []
 	for idx, verbatim_match in enumerate(verbatim_matches) :
 		numbered_matches.append( str(idx) + ": " + verbatim_match)
 	query = ""
-	query = "The following is an ordered list of the medical conditions: " + ", ".join(numbered_matches) + ". " \
-		+ "Please give me a comma-separated list of the corresponding indices from 0 to " + str(len(numbered_matches)-1) \
-		+ ", enclosed in square brackets, of the conditions which are indicated according to the drug label I will provide. " \
-		+ " If you find no medical conditions that are indications, then return '[]'. " + persistent_component
-	print(design_element)
+	numbered_comma_separated_matches = ", ".join(numbered_matches)
+	match_count = str(len(numbered_matches)-1)
+	masked_component_sequence = "";
 	for counter, design_bit in enumerate(design_element) :
 		if counter > 0 and bool( design_bit ) :
-			query += components[counter-1]
-	query += "\n\nHere is the drug label: " + context + ""
+			masked_component_sequence += components[counter-1]
+	query = persistent_component.format(
+		numbered_comma_separated_matches = numbered_comma_separated_matches,
+		match_count = match_count,
+		masked_component_sequence = masked_component_sequence,
+		context = context
+		)
+	'''
+	"The following is an ordered list of the medical conditions: " + numbered_comma_separated_matches + ". " \
+		+ "Please give me a comma-separated list of the corresponding indices from 0 to " + match_count \
+		+ ", enclosed in square brackets, of the conditions which are indicated according to the drug label I will provide. " \
+		+ " If you find no medical conditions that are indications, then return '[]'. " \
+		+ " Be careful because a false answer might result in the patient death. Break each label into separate sentenses," \
+		+ " then consider each sentense separately. " + masked_component_sequence + " \n\nHere is the drug label: " + context + "
+	'''
+	print(design_element)
 	return(query)
 
 def get_sequence_of_query_objects(context_input, components, context_index_list = None, context_id_list = None, context_id_name = 'label_number', persistent_component="") : # variable_indices, slicing_limits=(None, None)) :
@@ -209,7 +230,7 @@ def get_sequence_of_query_objects(context_input, components, context_index_list 
 	# selected_json_objects = json_obj[slicing_limits[0] : slicing_limits[1]]
 	design_matrix = generate_uniform_design(len(selected_json_objects), uniform_design_pattern(components))
 	
-	ret = []
+	query_object_list = []
 	print(f"len(design_matrix) = {len(design_matrix)} ")
 	for query_id, design_element in enumerate(design_matrix) :
 		context_id = design_element[0]
@@ -217,7 +238,7 @@ def get_sequence_of_query_objects(context_input, components, context_index_list 
 		context = one_json_object['indications_and_usage']
 		verbatim_matches = one_json_object['verbatim_emtree_matches']
 		designer_query = one_designer_query(components, verbatim_matches, context, design_element, persistent_component=persistent_component)
-		ret.append( {
+		query_object_list.append( {
 			'pregenerated_query' : designer_query,
 			'design_element' : design_element,
 			'synonym_count' : len(verbatim_matches),
@@ -226,6 +247,7 @@ def get_sequence_of_query_objects(context_input, components, context_index_list 
 			'context_original_id' : selected_json_objects[context_id][context_id_name],
 			'brand_name' : selected_json_objects[context_id]['brand_name']
 		} )
+	ret = { 'persistent_component' : persistent_component, 'components' : components, 'query_object_list' : query_object_list}
 	return(ret)
 
 '''

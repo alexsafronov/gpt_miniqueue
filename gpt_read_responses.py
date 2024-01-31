@@ -38,21 +38,33 @@ def enumerated_list_string(list) :
 	for counter, item in enumerate(list) :
 		enumerated_list.append(str(counter) + ": " + item)
 	return( ",   ".join(enumerated_list) + ".")
+	
+fn_prefices_to_skip=["INVALID_", "all_components.json"]
 
-def valid_filenames_sorted_by_query_id(gpt_response_folder_path, fn_prefix_to_skip="INVALID_") :
-	valid_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json') and not filename.startswith(fn_prefix_to_skip)]
+def filename_starts_with_a_special_prefix(fn) :
+	global fn_prefices_to_skip
+	for prefix in fn_prefices_to_skip :
+		if fn.startswith(prefix) :
+			return(True)
+	return(False)
+	
+def valid_filenames_sorted_by_query_id(gpt_response_folder_path) :
+	valid_file_names = [filename for filename in os.listdir(gpt_response_folder_path) if filename.endswith('.json') and not filename_starts_with_a_special_prefix(filename)]
 	# Assuming the file name is formatted as "20240129_011233_722566_L000211.json" - sorting by "L000211" (query ID)
 	sorted_file_names = sorted(valid_file_names, key=lambda x: x[24:32])
 	return(sorted_file_names)
 	# for item in sorted_file_names :
 	#	print(f"{item} ={item[24:30]}=")
 
-def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVALID_", correct_answers_file_path_name=None, verbatim_matches_file_path_name=None, query_list_filename=None, verbose = True) :
+def read_responses_by_context(gpt_response_folder_path, correct_answers_file_path_name=None, verbatim_matches_file_path_name=None, query_list_filename=None, verbose = True) :
+	
+	all_components_json = json.load(open(os.path.join(gpt_response_folder_path, "all_components.json"), "r"))
+	print(json.dumps(all_components_json, indent=2))
 	
 	old_target = sys.stdout
 	sys.stdout = old_target if verbose else open(os.devnull, "w")
 	
-	json_file_names = valid_filenames_sorted_by_query_id(gpt_response_folder_path, fn_prefix_to_skip=fn_prefix_to_skip)
+	json_file_names = valid_filenames_sorted_by_query_id(gpt_response_folder_path)
 	
 	dict_of_response_lists = {}
 	
@@ -76,7 +88,7 @@ def read_responses_by_context(gpt_response_folder_path, fn_prefix_to_skip="INVAL
 	context_counter = 0
 	
 	for counter, json_file_name in enumerate(json_file_names):
-		if json_file_name.startswith(fn_prefix_to_skip) :
+		if filename_starts_with_a_special_prefix(json_file_name):
 			continue
 		else :
 			with open(os.path.join(gpt_response_folder_path, json_file_name), encoding="utf-8") as json_file:
@@ -174,6 +186,7 @@ def display_4_way_anova(responses) :
 	df = return_dataframe(responses)
 	# display(df.to_string())
 	model = ols(  'pct_misclass ~ C(c1) + C(c2) + C(c3) + C(c4)' , data=df).fit() 
+	print("\n" + "4-way ANOVA : \n")
 	result = sm.stats.anova_lm(model, type=2) 
 	print(result) 
 
@@ -238,6 +251,8 @@ def read_responses(gpt_response_folder_path, out_fn, fn_prefix_to_skip="INVALID_
 
 def read_correct_answers(file_path_name) :
 	correct_answers = {}
+	print("\n\n" + "validation file name : ", file_path_name, "\n")
+	print("Correct answers for cross-validation :\n")
 	with open(file_path_name, encoding="utf-8") as plain_file :
 		counter = 0
 		while True:
@@ -281,7 +296,7 @@ def read_contexts(file_path_name, context_field_name = 'indications_and_usage', 
 def read_query_list(query_list_filename, query_field_name = 'pregenerated_query', query_id_name = 'query_id') :
 	queries = {}
 	with open(query_list_filename, encoding="utf-8") as json_file :
-		dict_obj = json.load(json_file)
+		dict_obj = json.load(json_file)['query_object_list']
 		# print(dict_obj)
 		for marked_item in dict_obj :
 			# print(marked_item[context_field_name])

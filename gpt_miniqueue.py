@@ -15,6 +15,11 @@ sleep_seconds = 0.5
 queue_timestamp = ""
 
 pregenerated_query_list = None
+persistent_component    = None
+components              = None
+
+
+
 design_element_list = None
 context_id_list = None
 original_context_id_list = None
@@ -146,13 +151,25 @@ def pregenerated_query(query_idx) :
 	return (ret)
 
 def queue_range_pregenerated(l_lim, u_lim, api_key_fn_path="../openai_key.txt", source_pregen_query_path_fn="some_query_seq.json", base_output_folder=".") :
+	global persistent_component
+	global components
 	global pregenerated_query_list
 	global api_key_file
 	api_key_file = api_key_fn_path
-	pregenerated_query_list = json.load(open(source_pregen_query_path_fn, encoding="utf-8")) 
+	json_object_from_file = json.load(open(source_pregen_query_path_fn, encoding="utf-8")) 
+	
+	persistent_component    = json_object_from_file['persistent_component']
+	components              = json_object_from_file['components']
+	pregenerated_query_list = json_object_from_file['query_object_list']
+	
 	populate_lists()
 	return(queue_range(l_lim, u_lim, 0, query_fn=pregenerated_query, base_output_folder = base_output_folder))
-
+	
+def save_all_components_in_a_folder(outfolder_path) :
+	file_path_name = os.path.join(outfolder_path, "all_components.json")
+	to_save = { 'persistent_component' : persistent_component, 'components' : components }
+	json.dump(to_save, open(file_path_name, "w"))
+	
 def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_valid_fn_arg = response_is_valid_sometimes, base_output_folder=".") :
 	l_lim = 0 if l_lim == None else l_lim
 	u_lim = len(pregenerated_query_list) if u_lim == None else u_lim
@@ -174,6 +191,7 @@ def queue_range(l_lim, u_lim, rep, query_fn=pregenerated_query, response_is_vali
 	if not os.path.exists(outfolder_path):
 		# Create a new directory because it does not exist
 		os.makedirs(outfolder_path)
+		save_all_components_in_a_folder(outfolder_path)
 	for idx in range(l_lim, u_lim) :
 		is_completed[idx] = False
 		threading.Thread(target=get_extract, daemon=True, args=(idx, )).start()
