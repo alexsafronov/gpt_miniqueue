@@ -1,6 +1,4 @@
 # PROGRAM: factorial_designer.py
-# AUTHOR: Alexander Safronov
-# DATE CREATED: 2024 01-24
 # PURPOSE: To generate a list of LLM queries usinf fractional factorial design with prompt components as factors.
 # NOTE: This program is a refctored version of the former ../drugdata/gpt_queries.py (a.k.a. pregen_queries.py)
 # INSTALLATION OF MODULES: TO be able to use doe_box module, run this: "pip install doe-toolbox"

@@ -2,4 +2,4 @@ __pycache__/*.pyc
 *.txt
 *.pyc
 *.json
-
+!a_prematched_list_of_druglabels.json
