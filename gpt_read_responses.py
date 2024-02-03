@@ -55,12 +55,21 @@ def valid_filenames_sorted_by_query_id(gpt_response_folder_path) :
 	return(sorted_file_names)
 	# for item in sorted_file_names :
 	#	print(f"{item} ={item[24:30]}=")
+def print_components(gpt_response_folder_path, all_components_json_fn) :
+	all_components_json = json.load(open(os.path.join(gpt_response_folder_path, all_components_json_fn), "r"))
+	query_structure = all_components_json['persistent_component']
+	component_list = all_components_json['components']
+	separator = "-" * 80
+	print(f"Query structure :\n{separator}\n{query_structure}\n{separator}\n")
+	print("Prompt components : ")
+	for counter, component in enumerate(component_list) :
+		index_to_display = ("c"+str(counter+1)).rjust(3)
+		print("{index_to_display}: {component}".format(index_to_display = index_to_display, component = component))
+		# print(index_to_display, component)
 
 def read_responses_by_context(gpt_response_folder_path, correct_answers_file_path_name=None, verbatim_matches_file_path_name=None, query_list_filename=None, verbose = True) :
 	
-	all_components_json = json.load(open(os.path.join(gpt_response_folder_path, "all_components.json"), "r"))
-	print(json.dumps(all_components_json, indent=2))
-	
+	print_components(gpt_response_folder_path, "all_components.json")
 	old_target = sys.stdout
 	sys.stdout = old_target if verbose else open(os.devnull, "w")
 	
@@ -131,8 +140,11 @@ def read_responses_by_context(gpt_response_folder_path, correct_answers_file_pat
 					response_indicators = [0] * synonym_count
 					for response_item in json_obj['response'] :
 						response_indicators[response_item] = 1
-					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + str(design_element_count).rjust(2)+ " " + " ".join(str(x).rjust(2) for x in json_obj['design_element']) + \
-						"    " + str(json_obj['synonym_count']).rjust(3) + "  " + " ".join(str(x) for x in response_indicators) + \
+					synonym_count_c = "" # str(json_obj['synonym_count'])
+					design_element_count_c = "" # str(design_element_count)
+					design_element_to_report = json_obj['design_element'][1:]
+					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + design_element_count_c.rjust(2)+ "   " + " ".join(str(x).rjust(2) for x in design_element_to_report) + \
+						"    " + synonym_count_c.rjust(3) + "   " + " ".join(str(x) for x in response_indicators) + \
 						"    FALSE_NEG : "  + ", ".join(json_obj['false_negative_verbatims']) + ". " + \
 						"    FALSE_POS : "  + ", ".join(json_obj['false_positive_verbatims']) + ". " 
 					print(out_str)
