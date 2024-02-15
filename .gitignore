@@ -1,4 +1,5 @@
 __pycache__/*.pyc
+TO_ARCHIVE_02/*
 *.txt
 *.pyc
 *.json

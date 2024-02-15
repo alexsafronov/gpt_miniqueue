@@ -95,6 +95,7 @@ def read_responses_by_context(gpt_response_folder_path, correct_answers_file_pat
 		contexts         = read_contexts        (verbatim_matches_file_path_name)
 		
 	context_counter = 0
+	response_counter = 0
 	
 	for counter, json_file_name in enumerate(json_file_names):
 		if filename_starts_with_a_special_prefix(json_file_name):
@@ -116,7 +117,8 @@ def read_responses_by_context(gpt_response_folder_path, correct_answers_file_pat
 					print(contexts[original_context_id], "\n")
 					print(enumerated_list_string(verbatim_matches[original_context_id]), "\n")
 					print("\n                     Prompt design       Classification of the verbatim terms")
-					print(  "                     -------------       ---------------------------------")
+					response_counter = 0
+					
 				
 				design_element_count = len(json_obj['design_element'])
 				synonym_count = json_obj['synonym_count']
@@ -138,11 +140,27 @@ def read_responses_by_context(gpt_response_folder_path, correct_answers_file_pat
 					
 					dict_of_response_lists[original_context_id]['api_responses'].append(json_obj)
 					response_indicators = [0] * synonym_count
+					design_element_to_report = json_obj['design_element'][1:]
+					
+					# Printing indices :
+						
+					if response_counter == 0 :
+						to_print_design_idx = " ".join(str(x).rjust(2) for x in design_element_to_report)
+						printed_index_string = " " * 19
+						for idx, x in enumerate(design_element_to_report) :
+							printed_index_string += (str(idx+1).rjust(3))
+						printed_index_string += " " * 9
+						for idx in range(0, synonym_count) :
+							printed_index_string += (str(idx).rjust(2))
+						print(printed_index_string)
+						print(  "                     -------------       ---------------------------------")
+					response_counter += 1
+					
+					
 					for response_item in json_obj['response'] :
 						response_indicators[response_item] = 1
 					synonym_count_c = "" # str(json_obj['synonym_count'])
 					design_element_count_c = "" # str(design_element_count)
-					design_element_to_report = json_obj['design_element'][1:]
 					out_str = str(counter).rjust(4) + " " + original_context_id.rjust(9) + " " + design_element_count_c.rjust(2)+ "   " + " ".join(str(x).rjust(2) for x in design_element_to_report) + \
 						"    " + synonym_count_c.rjust(3) + "   " + " ".join(str(x) for x in response_indicators) + \
 						"    FALSE_NEG : "  + ", ".join(json_obj['false_negative_verbatims']) + ". " + \
